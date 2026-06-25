@@ -21,32 +21,32 @@ function timeRemaining(closesAt: string): string {
 
 const storyComponents: Components = {
   h1: ({ children }) => (
-    <p className="mt-8 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 first:mt-0">
+    <p className="mb-4 mt-12 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400 first:mt-0">
       {children}
     </p>
   ),
   h2: ({ children }) => (
-    <p className="mt-6 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+    <p className="mb-4 mt-10 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
       {children}
     </p>
   ),
   p: ({ children }) => (
-    <p className="mb-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 last:mb-0">
+    <p className="mb-5 text-base leading-7 text-zinc-800 dark:text-zinc-200 last:mb-0">
       {children}
     </p>
   ),
   strong: ({ children }) => (
-    <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{children}</strong>
+    <strong className="font-bold text-zinc-900 dark:text-zinc-100">{children}</strong>
   ),
   em: ({ children }) => (
-    <em className="italic text-zinc-500 dark:text-zinc-400">{children}</em>
+    <em className="italic text-zinc-600 dark:text-zinc-400">{children}</em>
   ),
-  hr: () => <hr className="my-6 border-zinc-200 dark:border-zinc-800" />,
+  hr: () => <hr className="my-10 border-zinc-200 dark:border-zinc-800" />,
 }
 
 function StoryText({ text }: { text: string }) {
   return (
-    <div className="w-full max-w-prose">
+    <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-10 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:px-12">
       <ReactMarkdown components={storyComponents}>{text}</ReactMarkdown>
     </div>
   )

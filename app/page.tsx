@@ -3,8 +3,8 @@ import App from '@/app/components/App'
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 p-8 dark:bg-black">
-      <main className="flex w-full max-w-lg flex-col items-center gap-12 text-center">
-        <div className="flex flex-col items-center gap-4">
+      <main className="flex w-full max-w-2xl flex-col items-center gap-12">
+        <div className="flex flex-col items-center gap-4 text-center">
           <h1 className="text-5xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             EIGENTHROPE
           </h1>
