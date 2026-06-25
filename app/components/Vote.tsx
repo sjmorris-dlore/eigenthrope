@@ -1,25 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-
-const CHOICES = [
-  {
-    id: 'A',
-    label: 'Follow the getaway car',
-    description: 'Pursue the visible threat. End it here.',
-  },
-  {
-    id: 'B',
-    label: 'Search the building',
-    description: 'Something happened inside while everyone watched the street.',
-  },
-]
+import type { ChapterData } from '@/app/api/chapter/route'
 
 interface VoteProps {
   account: string
 }
 
 export default function Vote({ account }: VoteProps) {
+  const [chapter, setChapter] = useState<ChapterData | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [qr, setQr] = useState<string | null>(null)
   const [signUrl, setSignUrl] = useState<string | null>(null)
@@ -28,12 +17,18 @@ export default function Vote({ account }: VoteProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    fetch('/api/chapter')
+      .then((r) => r.json())
+      .then(setChapter)
+      .catch(() => setError('Failed to load chapter.'))
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [])
 
   const castVote = async (choice: string) => {
+    if (!chapter) return
     setError(null)
     setPending(choice)
 
@@ -43,9 +38,9 @@ export default function Vote({ account }: VoteProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          universe: 'U001',
-          chapter: 'C01',
-          choicePoint: 'CP1',
+          universe: chapter.universe,
+          chapter: chapter.chapter,
+          choicePoint: chapter.choice_point.split(':')[2],
           choice,
           account,
         }),
@@ -93,6 +88,10 @@ export default function Vote({ account }: VoteProps) {
     setSignUrl(null)
   }
 
+  if (!chapter) {
+    return <p className="text-sm text-zinc-400">Loading…</p>
+  }
+
   if (voted) {
     return (
       <div className="flex flex-col items-center gap-2 text-center">
@@ -135,32 +134,37 @@ export default function Vote({ account }: VoteProps) {
     )
   }
 
+  if (chapter.status === 'closed') {
+    return (
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+          {chapter.chapter_label}
+        </p>
+        <p className="text-sm text-zinc-500">Voting is closed for this choice point.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex w-full flex-col items-center gap-6">
       <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-        Chapter 1 · Choice Point
+        {chapter.chapter_label}
       </p>
       <p className="max-w-sm text-center text-zinc-700 dark:text-zinc-300">
-        The Hero stops the robbery. But something feels wrong. What does he do next?
+        {chapter.prompt}
       </p>
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500">{error}</p>}
       <div className="flex w-full max-w-sm flex-col gap-3">
-        {CHOICES.map((c) => (
+        {Object.entries(chapter.choices).map(([id, choice]) => (
           <button
-            key={c.id}
-            onClick={() => castVote(c.id)}
+            key={id}
+            onClick={() => castVote(id)}
             disabled={pending !== null}
             className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 text-left transition-colors hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-900"
           >
-            <span className="text-xs font-semibold text-zinc-400">
-              Choice {c.id}
-            </span>
-            <span className="font-medium text-zinc-900 dark:text-zinc-50">
-              {c.label}
-            </span>
-            <span className="text-sm text-zinc-500">{c.description}</span>
+            <span className="text-xs font-semibold text-zinc-400">Choice {id}</span>
+            <span className="font-medium text-zinc-900 dark:text-zinc-50">{choice.label}</span>
+            <span className="text-sm text-zinc-500">{choice.description}</span>
           </button>
         ))}
       </div>

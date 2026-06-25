@@ -1,5 +1,6 @@
 import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import type { ChapterData } from '@/app/api/chapter/route'
 
 const XRPL_RPC = 'https://xrplcluster.com/'
 const TABLE = 'eigenthrope_tallies'
@@ -9,7 +10,12 @@ function fromHex(hex: string) {
   return Buffer.from(hex, 'hex').toString('utf8')
 }
 
-async function computeTallyFromChain(vaultAddress: string): Promise<Record<string, number>> {
+async function computeTallyFromChain(
+  vaultAddress: string,
+  universe: string,
+  chapter: string,
+  cp: string
+): Promise<Record<string, number>> {
   const res = await fetch(XRPL_RPC, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -41,9 +47,9 @@ async function computeTallyFromChain(vaultAddress: string): Promise<Record<strin
       try {
         const vote = JSON.parse(fromHex(Memo.MemoData))
         if (
-          vote.universe === 'U001' &&
-          vote.chapter === 'C01' &&
-          vote.choice_point === 'CP1'
+          vote.universe === universe &&
+          vote.chapter === chapter &&
+          vote.choice_point === cp
         ) {
           latestVote[sender] = { choice: vote.choice, weight: vote.weight ?? 1 }
           seenAccounts.add(sender)
@@ -67,7 +73,24 @@ export async function GET() {
     return Response.json({ error: 'EIGENTHROPE_VAULT_ADDRESS not set' }, { status: 500 })
   }
 
-  const choicePoint = 'U001:C01:CP1'
+  const configItem = await dynamo.send(new GetCommand({
+    TableName: 'eigenthrope_config',
+    Key: { key: 'active_choice_point' },
+  }))
+
+  if (!configItem.Item) {
+    return Response.json({ error: 'No active choice point' }, { status: 404 })
+  }
+
+  const choicePoint = configItem.Item.value as string
+  const [universe, chapter, cp] = choicePoint.split(':')
+
+  const chapterItem = await dynamo.send(new GetCommand({
+    TableName: 'eigenthrope_chapters',
+    Key: { choice_point: choicePoint },
+  }))
+
+  const chapterData = chapterItem.Item as ChapterData | undefined
 
   // Check cache
   const cached = await dynamo.send(new GetCommand({
@@ -78,12 +101,12 @@ export async function GET() {
   if (cached.Item) {
     const age = Date.now() - new Date(cached.Item.last_updated).getTime()
     if (age < CACHE_TTL_MS) {
-      return Response.json({ counts: cached.Item.counts, cached: true })
+      return Response.json({ counts: cached.Item.counts, choices: chapterData?.choices ?? {}, cached: true })
     }
   }
 
   // Cache miss or stale — recompute from chain
-  const counts = await computeTallyFromChain(vaultAddress)
+  const counts = await computeTallyFromChain(vaultAddress, universe, chapter, cp)
 
   await dynamo.send(new PutCommand({
     TableName: TABLE,
@@ -94,5 +117,5 @@ export async function GET() {
     },
   }))
 
-  return Response.json({ counts, cached: false })
+  return Response.json({ counts, choices: chapterData?.choices ?? {}, cached: false })
 }

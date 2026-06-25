@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 
 interface TallyData {
   counts: Record<string, number>
+  choices: Record<string, { label: string; description: string }>
 }
 
 export default function Tally() {
@@ -25,14 +26,19 @@ export default function Tally() {
   const total = Object.values(tally.counts).reduce((a, b) => a + b, 0)
   if (total === 0) return null
 
+  const choiceIds = Object.keys(tally.choices).length > 0
+    ? Object.keys(tally.choices)
+    : Object.keys(tally.counts)
+
   return (
     <div className="flex w-full max-w-sm flex-col gap-3">
       <p className="text-center text-xs font-semibold uppercase tracking-widest text-zinc-400">
         Observer Tally
       </p>
-      {['A', 'B'].map((choice) => {
+      {choiceIds.map((choice) => {
         const count = tally.counts[choice] ?? 0
         const pct = total > 0 ? Math.round((count / total) * 100) : 0
+        const label = tally.choices[choice]?.label ?? choice
         return (
           <div key={choice} className="flex items-center gap-3">
             <span className="w-6 text-xs font-semibold text-zinc-400">{choice}</span>
@@ -43,6 +49,7 @@ export default function Tally() {
               />
             </div>
             <span className="w-10 text-right text-xs text-zinc-500">{pct}%</span>
+            <span className="text-xs text-zinc-400 hidden sm:inline truncate max-w-[120px]">{label}</span>
           </div>
         )
       })}
