@@ -53,7 +53,7 @@ export default function Vote({ account }: VoteProps) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      setError(err?.error?.message ?? `API error ${res.status}`)
+      setError(JSON.stringify(err?.error ?? err) ?? `API error ${res.status}`)
       setPending(null)
       return
     }

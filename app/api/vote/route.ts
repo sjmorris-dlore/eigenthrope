@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
   const data = await res.json()
 
   if (!res.ok) {
-    return Response.json({ error: data }, { status: res.status })
+    console.error('Xaman API error:', JSON.stringify(data))
+    return Response.json({ error: data, status: res.status }, { status: res.status })
   }
 
   return Response.json({
