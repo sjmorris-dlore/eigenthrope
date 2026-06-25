@@ -13,6 +13,9 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({
 }))
 
 const choicePoint = 'U001:C01:CP1'
+const now = new Date()
+const votingClosesAt = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString()
+const nextChapterDueAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
 await client.send(new PutCommand({
   TableName: 'eigenthrope_chapters',
@@ -33,7 +36,10 @@ await client.send(new PutCommand({
         description: 'Something happened inside while everyone watched the street.',
       },
     },
-    opened_at: new Date().toISOString(),
+    voting_opens_at: now.toISOString(),
+    voting_closes_at: votingClosesAt,
+    next_chapter_due_at: nextChapterDueAt,
+    opened_at: now.toISOString(),
     closed_at: null,
   },
 }))

@@ -7,6 +7,16 @@ interface VoteProps {
   account: string
 }
 
+function timeRemaining(closesAt: string): string {
+  const ms = new Date(closesAt).getTime() - Date.now()
+  if (ms <= 0) return 'Voting has closed'
+  const hours = Math.floor(ms / (1000 * 60 * 60))
+  const days = Math.floor(hours / 24)
+  if (days > 0) return `${days} day${days !== 1 ? 's' : ''} remaining`
+  if (hours > 0) return `${hours} hour${hours !== 1 ? 's' : ''} remaining`
+  return 'Less than an hour remaining'
+}
+
 export default function Vote({ account }: VoteProps) {
   const [chapter, setChapter] = useState<ChapterData | null>(null)
   const [pending, setPending] = useState<string | null>(null)
@@ -157,6 +167,9 @@ export default function Vote({ account }: VoteProps) {
       <p className="max-w-sm text-center text-zinc-700 dark:text-zinc-300">
         {chapter.prompt}
       </p>
+      {chapter.voting_closes_at && (
+        <p className="text-xs text-zinc-500">{timeRemaining(chapter.voting_closes_at)}</p>
+      )}
       {error && <p className="text-sm text-red-500">{error}</p>}
       <div className="flex w-full max-w-sm flex-col gap-3">
         {Object.entries(chapter.choices).map(([id, choice]) => (

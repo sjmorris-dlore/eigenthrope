@@ -14,6 +14,11 @@ export interface ChapterData {
   status: 'open' | 'closed'
   prompt: string
   choices: Record<string, Choice>
+  voting_opens_at: string
+  voting_closes_at: string
+  next_chapter_due_at: string
+  winning_choice?: string
+  final_tally?: Record<string, number>
 }
 
 export async function GET() {

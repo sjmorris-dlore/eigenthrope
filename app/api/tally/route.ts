@@ -92,6 +92,17 @@ export async function GET() {
 
   const chapterData = chapterItem.Item as ChapterData | undefined
 
+  // Closed chapters return their canonical final tally — no chain query needed
+  if (chapterData?.status === 'closed' && chapterData.final_tally) {
+    return Response.json({
+      counts: chapterData.final_tally,
+      choices: chapterData.choices ?? {},
+      cached: false,
+      closed: true,
+      winning_choice: chapterData.winning_choice,
+    })
+  }
+
   // Check cache
   const cached = await dynamo.send(new GetCommand({
     TableName: TABLE,
