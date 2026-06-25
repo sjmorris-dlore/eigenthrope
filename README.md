@@ -1,6 +1,6 @@
 # Eigenthrope
 
-*A persistent, community-driven narrative built on the XRP Ledger.*
+*A persistent, collaborative narrative built on the XRP Ledger.*
 
 Three beings exist who can slip between parallel universes.
 
