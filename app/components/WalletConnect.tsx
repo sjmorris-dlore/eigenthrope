@@ -20,11 +20,20 @@ interface WalletConnectProps {
 export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   const [account, setAccount] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
+  const [resonance, setResonance] = useState<number | null>(null)
   const xummRef = useRef<XummInstance | null>(null)
 
   const updateAccount = (value: string | null) => {
     setAccount(value)
     onAccountChange?.(value)
+    if (value) {
+      fetch(`/api/resonance?account=${value}`)
+        .then((r) => r.json())
+        .then((d) => setResonance(d.resonance ?? null))
+        .catch(() => {})
+    } else {
+      setResonance(null)
+    }
   }
 
   useEffect(() => {
@@ -76,7 +85,9 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
         <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100">{short}</p>
         <div className="flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-1.5 dark:border-zinc-700">
           <span className="text-sm text-zinc-500 dark:text-zinc-400">Resonance</span>
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">0</span>
+          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+            {resonance ?? '…'}
+          </span>
         </div>
         <button
           onClick={disconnect}

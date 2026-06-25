@@ -23,7 +23,7 @@ export async function GET() {
   const transactions: unknown[] = data.result?.transactions ?? []
 
   // account_tx returns newest-first. Track the latest vote per wallet.
-  const latestVote: Record<string, string> = {}
+  const latestVote: Record<string, { choice: string; weight: number }> = {}
   const seenAccounts = new Set<string>()
 
   for (const entry of transactions) {
@@ -46,7 +46,7 @@ export async function GET() {
           vote.chapter === 'C01' &&
           vote.choice_point === 'CP1'
         ) {
-          latestVote[sender] = vote.choice
+          latestVote[sender] = { choice: vote.choice, weight: vote.weight ?? 1 }
           seenAccounts.add(sender)
         }
       } catch {
@@ -56,8 +56,8 @@ export async function GET() {
   }
 
   const counts: Record<string, number> = {}
-  for (const choice of Object.values(latestVote)) {
-    counts[choice] = (counts[choice] ?? 0) + 1
+  for (const { choice, weight } of Object.values(latestVote)) {
+    counts[choice] = (counts[choice] ?? 0) + weight
   }
 
   return Response.json({ counts })
