@@ -476,30 +476,14 @@ A chapter advancing only one scale loses player investment. All three keeps play
 
 ---
 
-## Hackathon Requirements Checklist
+## Open Questions
 
-- [ ] Source tag assigned by XRPL Commons — add to all mainnet transactions
-- [ ] Mainnet validation meeting booked
-- [ ] At least one mainnet transaction with source tag recorded
-- [ ] Demo video (YouTube, Vimeo, or Loom)
-- [ ] Public GitHub repository URL submitted
-- [ ] Short description (200 chars max)
-- [ ] Full description (5000 chars max)
-- [ ] Technical description (1000 chars max)
-- [ ] Submission deadline: **July 23, 2026**
-
----
-
-## Open Technical Questions
-
-1. Vote advancement trigger — timer-based or vote-threshold-based?
-2. How many choice points per chapter?
-3. Minimum participation weight for a vote to count?
-4. How to handle simultaneous votes during tallying (race conditions)
-5. Whether to expose a public API for community-built tools (wikis, trackers)
-6. Mobile experience — Xaman deep links vs. QR code flow
-7. What fields should the Author Dashboard expose for immutable facts vs. community knowledge state?
-8. How much of the public archive should be generated automatically from DB state vs. authored manually?
+1. How many choice points per chapter?
+2. Minimum participation weight for a vote to count?
+3. How to handle simultaneous votes during tallying (race conditions)
+4. Whether to expose a public API for community-built tools (wikis, trackers)
+5. What fields should an author dashboard expose for managing immutable facts vs. community knowledge state?
+6. How much of the public archive should be generated automatically from DB state vs. authored manually?
 
 ---
 
