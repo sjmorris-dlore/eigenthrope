@@ -15,7 +15,8 @@ export async function fetchStoryText(key: string): Promise<string | null> {
   try {
     const res = await s3.send(new GetObjectCommand({ Bucket: STORIES_BUCKET, Key: key }))
     return (await res.Body?.transformToString()) ?? null
-  } catch {
+  } catch (err) {
+    console.error(`[s3] fetchStoryText failed for key "${key}" in bucket "${STORIES_BUCKET}":`, err)
     return null
   }
 }
