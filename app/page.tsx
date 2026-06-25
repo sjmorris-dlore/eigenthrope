@@ -1,4 +1,4 @@
-import WalletConnect from '@/app/components/WalletConnect'
+import App from '@/app/components/App'
 
 export default function Home() {
   return (
@@ -13,13 +13,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="flex flex-col items-center gap-6">
-          <p className="max-w-sm text-zinc-600 dark:text-zinc-400">
-            Connect your Xaman wallet to join the Observer community. Your choices
-            shape the story. Your participation becomes your power.
-          </p>
-          <WalletConnect />
-        </div>
+        <App />
 
         <div className="flex gap-4 text-sm text-zinc-400">
           <span>Universe 1</span>

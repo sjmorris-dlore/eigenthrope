@@ -13,10 +13,19 @@ interface XummInstance {
   logout(): void
 }
 
-export default function WalletConnect() {
+interface WalletConnectProps {
+  onAccountChange?: (account: string | null) => void
+}
+
+export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   const [account, setAccount] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const xummRef = useRef<XummInstance | null>(null)
+
+  const updateAccount = (value: string | null) => {
+    setAccount(value)
+    onAccountChange?.(value)
+  }
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_XAMAN_API_KEY
@@ -29,7 +38,7 @@ export default function WalletConnect() {
 
       xumm.on('success', async () => {
         const state = await xumm.state()
-        setAccount(state?.me?.account ?? null)
+        updateAccount(state?.me?.account ?? null)
         setConnecting(false)
       })
 
@@ -40,12 +49,12 @@ export default function WalletConnect() {
       // Handles returning from OAuth redirect and existing sessions
       const state = await xumm.state()
       if (state?.me?.account) {
-        setAccount(state.me.account)
+        updateAccount(state.me.account)
       }
     }
 
     init()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const connect = () => {
     if (!xummRef.current) return
@@ -56,7 +65,7 @@ export default function WalletConnect() {
   const disconnect = () => {
     if (!xummRef.current) return
     xummRef.current.logout()
-    setAccount(null)
+    updateAccount(null)
   }
 
   if (account) {
