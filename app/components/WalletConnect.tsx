@@ -20,20 +20,11 @@ interface WalletConnectProps {
 export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   const [account, setAccount] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
-  const [resonance, setResonance] = useState<number | null>(null)
   const xummRef = useRef<XummInstance | null>(null)
 
   const updateAccount = (value: string | null) => {
     setAccount(value)
     onAccountChange?.(value)
-    if (value) {
-      fetch(`/api/resonance?account=${value}`)
-        .then((r) => r.json())
-        .then((d) => setResonance(d.resonance ?? null))
-        .catch(() => {})
-    } else {
-      setResonance(null)
-    }
   }
 
   useEffect(() => {
@@ -80,18 +71,12 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   if (account) {
     const short = `${account.slice(0, 6)}…${account.slice(-4)}`
     return (
-      <div className="flex flex-col items-center gap-3">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Connected</p>
-        <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100">{short}</p>
-        <div className="flex items-center gap-2 rounded-full border border-zinc-200 px-4 py-1.5 dark:border-zinc-700">
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">Resonance</span>
-          <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-            {resonance ?? '…'}
-          </span>
-        </div>
+      <div className="flex items-center gap-3">
+        <p className="font-mono text-xs text-zinc-400">{short}</p>
+        <span className="text-zinc-300 dark:text-zinc-600">·</span>
         <button
           onClick={disconnect}
-          className="mt-1 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+          className="text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
         >
           Disconnect
         </button>
@@ -103,13 +88,23 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   const unconfigured = !apiKey
 
   return (
-    <button
-      onClick={connect}
-      disabled={connecting || unconfigured}
-      title={unconfigured ? 'Set NEXT_PUBLIC_XAMAN_API_KEY to enable' : undefined}
-      className="flex h-12 items-center justify-center rounded-full bg-zinc-900 px-8 text-base font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-    >
-      {connecting ? 'Connecting…' : 'Connect Xaman Wallet'}
-    </button>
+    <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Every observation is woven permanently into the XRP Ledger.
+        </p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-500">
+          Connect your Xaman wallet to become an Observer.
+        </p>
+      </div>
+      <button
+        onClick={connect}
+        disabled={connecting || unconfigured}
+        title={unconfigured ? 'Set NEXT_PUBLIC_XAMAN_API_KEY to enable' : undefined}
+        className="flex h-12 items-center justify-center rounded-full bg-zinc-900 px-8 text-base font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {connecting ? 'Connecting…' : 'Connect Xaman Wallet'}
+      </button>
+    </div>
   )
 }

@@ -93,19 +93,23 @@ export default function Vote({ account }: VoteProps) {
   }
 
   if (voted) {
+    const choiceLabel = chapter?.choices[voted]?.label ?? voted
     return (
       <div className="flex flex-col items-center gap-2 text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+          {chapter?.chapter_label}
+        </p>
         <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Observation recorded.
+          Observation woven into the ledger.
         </p>
         <p className="text-sm text-zinc-500">
-          Choice {voted} — on-chain.
+          {choiceLabel}
         </p>
         <button
           onClick={() => setVoted(null)}
           className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
         >
-          Change vote
+          Change observation
         </button>
       </div>
     )

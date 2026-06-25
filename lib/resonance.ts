@@ -68,13 +68,27 @@ async function countArtifacts(account: string, issuer: string): Promise<number> 
   }
 }
 
-export async function getResonance(
+export interface ResonanceBreakdown {
+  votes: number
+  artifacts: number
+  resonance: number
+}
+
+export async function getResonanceBreakdown(
   account: string,
   vaultAddress: string
-): Promise<number> {
+): Promise<ResonanceBreakdown> {
   const [votes, artifacts] = await Promise.all([
     countVotes(account, vaultAddress),
     countArtifacts(account, vaultAddress),
   ])
-  return votes + 1 + artifacts * ARTIFACT_BONUS
+  return { votes, artifacts, resonance: votes + 1 + artifacts * ARTIFACT_BONUS }
+}
+
+export async function getResonance(
+  account: string,
+  vaultAddress: string
+): Promise<number> {
+  const { resonance } = await getResonanceBreakdown(account, vaultAddress)
+  return resonance
 }
