@@ -1,5 +1,6 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import { fetchStoryText } from '@/lib/s3'
 
 export interface Choice {
   label: string
@@ -17,8 +18,13 @@ export interface ChapterData {
   voting_opens_at: string
   voting_closes_at: string
   next_chapter_due_at: string
+  story_key?: string
+  outcome_key?: string
   winning_choice?: string
   final_tally?: Record<string, number>
+  // Populated server-side from S3, not stored in DB
+  story_text?: string
+  outcome_text?: string
 }
 
 export async function GET() {
@@ -42,5 +48,16 @@ export async function GET() {
     return Response.json({ error: 'Chapter not found' }, { status: 404 })
   }
 
-  return Response.json(chapterItem.Item as ChapterData)
+  const chapter = chapterItem.Item as ChapterData
+
+  const [storyText, outcomeText] = await Promise.all([
+    chapter.story_key ? fetchStoryText(chapter.story_key) : Promise.resolve(null),
+    chapter.outcome_key ? fetchStoryText(chapter.outcome_key) : Promise.resolve(null),
+  ])
+
+  return Response.json({
+    ...chapter,
+    story_text: storyText ?? undefined,
+    outcome_text: outcomeText ?? undefined,
+  })
 }

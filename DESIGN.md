@@ -418,6 +418,33 @@ A collapse is not a failure state. It is built into the mythology — the Eigent
 
 ---
 
+## Chapter Structure
+
+### One Choice Point Per Chapter
+
+Each chapter contains exactly one choice point. Multiple choice points per chapter would force players to check back more than once per story beat, compressing the cadence in a way that feels like a chore rather than an event.
+
+The beat structure is: players read a chapter-length narrative, cast one vote, and wait for the outcome. That's the rhythm.
+
+### Story File Structure (S3)
+
+Each chapter has two Markdown files stored in S3:
+
+- **Story** (`{universe}/{chapter}/story.md`) — everything up to the branching moment: prologue, action, context. Published when the chapter opens. Players read this before voting.
+- **Outcome** (`{universe}/{chapter}/outcome.md`) — what happened as a result of the vote. Published after the choice point closes, while the next chapter is being written. Players see this in place of the voting UI during the 2-day author window.
+
+The vote prompt and choice button labels come from DynamoDB, not S3, so they can be seeded independently and don't require a file upload.
+
+### Beat Cadence
+
+7 days per story beat:
+- **Days 0–5**: Voting open. Players read the story and cast their vote.
+- **Day 5**: Voting closes. Tally computed, quantum yield calculated, artifacts distributed.
+- **Days 5–7**: Author window. Outcome story published; next chapter written.
+- **Day 7**: New chapter opens.
+
+---
+
 ## Chapter Design Rule
 
 Every chapter must advance all three narrative scales:
@@ -478,12 +505,11 @@ A chapter advancing only one scale loses player investment. All three keeps play
 
 ## Open Questions
 
-1. How many choice points per chapter?
-2. Minimum participation weight for a vote to count?
-3. How to handle simultaneous votes during tallying (race conditions)
-4. Whether to expose a public API for community-built tools (wikis, trackers)
-5. What fields should an author dashboard expose for managing immutable facts vs. community knowledge state?
-6. How much of the public archive should be generated automatically from DB state vs. authored manually?
+1. Minimum participation weight for a vote to count?
+2. How to handle simultaneous votes during tallying (race conditions)
+3. Whether to expose a public API for community-built tools (wikis, trackers)
+4. What fields should an author dashboard expose for managing immutable facts vs. community knowledge state?
+5. How much of the public archive should be generated automatically from DB state vs. authored manually?
 
 ---
 

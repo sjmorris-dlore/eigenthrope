@@ -14,7 +14,7 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({
 
 const choicePoint = 'U001:C01:CP1'
 const now = new Date()
-const votingClosesAt = new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString()
+const votingClosesAt = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString()
 const nextChapterDueAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
 await client.send(new PutCommand({
@@ -25,15 +25,15 @@ await client.send(new PutCommand({
     chapter: 'C01',
     chapter_label: 'Chapter 1 · Choice Point',
     status: 'open',
-    prompt: 'The Hero stops the robbery. But something feels wrong. What does he do next?',
+    prompt: 'Evelyn has only one chance. She can finally ask Sentinel the questions she\'s carried in her notebook for months — or she can follow the mysterious stranger back toward the painting that first caught his attention.',
     choices: {
       A: {
-        label: 'Follow the getaway car',
-        description: 'Pursue the visible threat. End it here.',
+        label: 'Interview Sentinel',
+        description: 'For three months Evelyn has carried questions no reporter has ever asked Sentinel. If she lets this chance pass, she may never get another.',
       },
       B: {
-        label: 'Search the building',
-        description: 'Something happened inside while everyone watched the street.',
+        label: 'Follow the Stranger',
+        description: 'The robbery is over. The stranger should be leaving with everyone else. Instead he\'s returning to the one place in the museum that seemed to matter to him before the robbery even began.',
       },
     },
     voting_opens_at: now.toISOString(),

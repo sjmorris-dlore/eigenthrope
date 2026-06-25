@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import type { Components } from 'react-markdown'
 import type { ChapterData } from '@/app/api/chapter/route'
 
 interface VoteProps {
@@ -15,6 +17,39 @@ function timeRemaining(closesAt: string): string {
   if (days > 0) return `${days} day${days !== 1 ? 's' : ''} remaining`
   if (hours > 0) return `${hours} hour${hours !== 1 ? 's' : ''} remaining`
   return 'Less than an hour remaining'
+}
+
+const storyComponents: Components = {
+  h1: ({ children }) => (
+    <p className="mt-8 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 first:mt-0">
+      {children}
+    </p>
+  ),
+  h2: ({ children }) => (
+    <p className="mt-6 mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+      {children}
+    </p>
+  ),
+  p: ({ children }) => (
+    <p className="mb-4 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 last:mb-0">
+      {children}
+    </p>
+  ),
+  strong: ({ children }) => (
+    <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{children}</strong>
+  ),
+  em: ({ children }) => (
+    <em className="italic text-zinc-500 dark:text-zinc-400">{children}</em>
+  ),
+  hr: () => <hr className="my-6 border-zinc-200 dark:border-zinc-800" />,
+}
+
+function StoryText({ text }: { text: string }) {
+  return (
+    <div className="w-full max-w-prose">
+      <ReactMarkdown components={storyComponents}>{text}</ReactMarkdown>
+    </div>
+  )
 }
 
 export default function Vote({ account }: VoteProps) {
@@ -102,25 +137,19 @@ export default function Vote({ account }: VoteProps) {
     return <p className="text-sm text-zinc-400">Loading…</p>
   }
 
-  if (voted) {
-    const choiceLabel = chapter?.choices[voted]?.label ?? voted
+  if (chapter.status === 'closed') {
     return (
-      <div className="flex flex-col items-center gap-2 text-center">
+      <div className="flex w-full flex-col items-center gap-6">
         <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          {chapter?.chapter_label}
+          {chapter.chapter_label}
         </p>
-        <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Observation woven into the ledger.
-        </p>
-        <p className="text-sm text-zinc-500">
-          {choiceLabel}
-        </p>
-        <button
-          onClick={() => setVoted(null)}
-          className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
-        >
-          Change observation
-        </button>
+        {chapter.outcome_text ? (
+          <StoryText text={chapter.outcome_text} />
+        ) : (
+          <p className="text-sm italic text-zinc-500">
+            The outcome is being written. Check back soon.
+          </p>
+        )}
       </div>
     )
   }
@@ -148,13 +177,23 @@ export default function Vote({ account }: VoteProps) {
     )
   }
 
-  if (chapter.status === 'closed') {
+  if (voted) {
+    const choiceLabel = chapter.choices[voted]?.label ?? voted
     return (
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
           {chapter.chapter_label}
         </p>
-        <p className="text-sm text-zinc-500">Voting is closed for this choice point.</p>
+        <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          Observation woven into the ledger.
+        </p>
+        <p className="text-sm text-zinc-500">{choiceLabel}</p>
+        <button
+          onClick={() => setVoted(null)}
+          className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+        >
+          Change observation
+        </button>
       </div>
     )
   }
@@ -164,6 +203,10 @@ export default function Vote({ account }: VoteProps) {
       <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
         {chapter.chapter_label}
       </p>
+      {chapter.story_text && <StoryText text={chapter.story_text} />}
+      {chapter.story_text && (
+        <div className="w-full max-w-prose border-t border-zinc-200 dark:border-zinc-800" />
+      )}
       <p className="max-w-sm text-center text-zinc-700 dark:text-zinc-300">
         {chapter.prompt}
       </p>

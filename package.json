@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1075.0",
+    "@aws-sdk/client-s3": "^3.1075.0",
     "@aws-sdk/lib-dynamodb": "^3.1075.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
     "xrpl": "^5.0.0",
     "xumm-oauth2-pkce": "^2.8.7"
   },

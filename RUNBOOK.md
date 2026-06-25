@@ -18,6 +18,7 @@ These must be set in both `.env.local` (local scripts) and Vercel (deployed app)
 | `AWS_ACCESS_KEY_ID` | DynamoDB access |
 | `AWS_SECRET_ACCESS_KEY` | DynamoDB access |
 | `CRON_SECRET` | Any string you choose — Vercel sends it to authenticate the hourly cron |
+| `EIGENTHROPE_S3_BUCKET` | S3 bucket name for story markdown files (e.g. `eigenthrope-stories-sjm`) |
 
 > `EIGENTHROPE_VAULT_SECRET` should never be added to Vercel. It is only needed locally for the minting and closing scripts.
 
@@ -30,33 +31,44 @@ These must be set in both `.env.local` (local scripts) and Vercel (deployed app)
 node scripts/create-tables.mjs
 node scripts/create-chapter-tables.mjs
 node scripts/create-artifact-table.mjs
+
+# Create S3 bucket for story files (set EIGENTHROPE_S3_BUCKET in .env.local first)
+node scripts/create-s3-bucket.mjs
 ```
 
 ---
 
 ## The Weekly Beat
 
-Each story beat runs for 7 days: 6 days of voting, 1 day for the author to write and publish the next chapter.
+Each story beat runs for 7 days: **5 days of voting** + **2 days** for the author to write the outcome and next chapter.
 
 ### Day 0 — Open a Choice Point
 
-Write the chapter content into `scripts/seed-chapter-1.mjs` (or a copy for subsequent chapters), then run:
+1. Seed the chapter (sets voting clock, prompt, and choices):
 
 ```bash
 node scripts/seed-chapter-1.mjs
 ```
 
-This sets the chapter live and starts the 6-day voting clock. Players immediately see the prompt and can vote.
+2. Upload the pre-vote story text so players see the narrative immediately:
 
-### Days 1–6 — Voting Open
+```bash
+node scripts/upload-story.mjs \
+  --choice-point U001:C01:CP1 \
+  --file story-files/U001-C01-story.md
+```
+
+The story file should cover everything up to the branching moment — prologue, action, context. The voting prompt and choice buttons come from DynamoDB.
+
+### Days 1–5 — Voting Open
 
 Nothing to do. The app handles voting, tallying, and the waveform display automatically. The Vercel cron checks hourly and closes the choice point when `voting_closes_at` passes.
 
 Monitor if you want:
-- Watch the tally at eigenthrope.sjmorriswrites.com
-- Check DynamoDB `eigenthrope_chapters` to see vote counts coming in
+- Watch the live tally at eigenthrope.sjmorriswrites.com
+- Check DynamoDB `eigenthrope_chapters` to see vote counts
 
-### Day 6 — Choice Point Closes
+### Day 5 — Choice Point Closes
 
 The cron closes it automatically. If you need to close it early:
 
@@ -66,9 +78,9 @@ node scripts/close-choice-point.mjs
 
 This computes the final tally from the chain, records the winning choice, and calculates the quantum yield percentage.
 
-### Day 6 — Distribute Artifacts
+### Day 5 — Distribute Artifacts
 
-After the choice point is closed, generate the artifact image (AI-generated, one per choice point), then run:
+After close, generate the artifact image (AI-generated, one per choice point), then run:
 
 ```bash
 node scripts/mint-artifact.mjs \
@@ -78,19 +90,28 @@ node scripts/mint-artifact.mjs \
 
 The script reads the final tally, selects winners at the quantum yield rate, mints one NFT per winner, and creates a 0-XRP claim offer for each. Winners see the "Claim Artifact" banner in the app for 7 days.
 
-### Day 6–7 — Write the Next Chapter
+### Days 5–7 — Write the Outcome and Next Chapter
 
-Review the outcome:
-- Which choice won
-- What the final tally looked like
-- What clues or facts this unlocks (see DESIGN.md — Immutable Story Facts)
+You have 2 days. Use the winning choice to:
+1. Write the outcome story (what happened as a result of the vote)
+2. Publish it so players see the narrative continuation while voting is closed:
 
-Write the next chapter, update the seed script, and seed it on Day 7.
+```bash
+node scripts/publish-outcome.mjs \
+  --choice-point U001:C01:CP1 \
+  --file story-files/U001-C01-outcome.md
+```
+
+3. Write the next chapter's pre-vote story (prologue through the new branching moment)
+4. Seed the next chapter on Day 7
 
 ### Day 7 — Open the Next Choice Point
 
 ```bash
 node scripts/seed-chapter-2.mjs   # (or whichever chapter is next)
+node scripts/upload-story.mjs \
+  --choice-point U001:C02:CP1 \
+  --file story-files/U001-C02-story.md
 ```
 
 ---
@@ -168,6 +189,8 @@ node scripts/seed-chapter-1.mjs
 | Script | Purpose |
 |---|---|
 | `seed-chapter-1.mjs` | Seeds a chapter and sets it as the active choice point |
+| `upload-story.mjs --choice-point X --file Y` | Uploads pre-vote story markdown to S3 and sets story_key |
+| `publish-outcome.mjs --choice-point X --file Y` | Uploads post-vote outcome markdown to S3 and sets outcome_key |
 | `close-choice-point.mjs` | Manually closes the active choice point |
 | `extend-vote.mjs --days N` | Extends the voting deadline by N days |
 | `mint-artifact.mjs --choice-point X --uri Y` | Mints and distributes NFT artifacts after a close |
@@ -176,6 +199,7 @@ node scripts/seed-chapter-1.mjs
 | `create-tables.mjs` | Creates `eigenthrope_tallies` table |
 | `create-chapter-tables.mjs` | Creates `eigenthrope_chapters` and `eigenthrope_config` tables |
 | `create-artifact-table.mjs` | Creates `eigenthrope_artifacts` table |
+| `create-s3-bucket.mjs` | Creates and configures the S3 story bucket |
 
 ---
 
