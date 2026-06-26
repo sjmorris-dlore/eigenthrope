@@ -10,6 +10,11 @@ jobs:
     steps:
       - name: Trigger close check
         run: |
-          curl -s -o /dev/null -w "%{http_code}" \
+          STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            --max-time 30 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://eigenstate.sjmorriswrites.com/api/cron/close-choice-point
+            https://eigenstate.sjmorriswrites.com/api/cron/close-choice-point \
+            || echo "curl_failed")
+          echo "HTTP status: $STATUS"
+          echo "Response body:"
+          cat /tmp/response.txt || true
