@@ -1,15 +1,14 @@
 /**
  * Usage:
- *   node scripts/mint-artifact.mjs \
+ *   node scripts/mint-participation.mjs \
  *     --choice-point U001:C01:CP1 \
- *     --uri https://example.com/artifact.png
+ *     --uri https://example.com/participation.png
  *
- * Yield is computed dynamically from vote distribution (Quantum Yield mechanic):
- *   50/50 split → 25% of winners receive artifacts (MAX_YIELD)
- *   100/0 split → 5%  of winners receive artifacts (MIN_YIELD)
+ * Mints a participation NFT (taxon 2) for every voter on the choice point,
+ * regardless of which choice they voted for. Worth +1 resonance each.
  *
  * Requires in .env.local:
- *   EIGENTHROPE_VAULT_SECRET — seed/secret for the vault wallet
+ *   EIGENTHROPE_VAULT_SECRET
  *   EIGENTHROPE_VAULT_ADDRESS
  *   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
  */
@@ -22,18 +21,8 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 
 const XRPL_WS = 'wss://xrplcluster.com/'
-const ARTIFACT_TAXON = 1 // WINNER_TAXON — worth +5 resonance each
+const PARTICIPATION_TAXON = 2
 const SOURCE_TAG = 2606230005
-const MAX_YIELD = 0.25
-const MIN_YIELD = 0.05
-const CHOICE_POINT = getArg('--choice-point')
-
-// p = winning fraction of total weighted votes (0.5–1.0)
-function computeYield(p) {
-  const t = Math.max(0, Math.min(1, (p - 0.5) * 2))
-  return MIN_YIELD + (MAX_YIELD - MIN_YIELD) * (1 - t)
-}
-const IMAGE_URI = getArg('--uri')
 const OFFER_EXPIRY_DAYS = 7
 
 function getArg(flag) {
@@ -41,8 +30,11 @@ function getArg(flag) {
   return idx !== -1 ? process.argv[idx + 1] : null
 }
 
+const CHOICE_POINT = getArg('--choice-point')
+const IMAGE_URI = getArg('--uri')
+
 if (!CHOICE_POINT || !IMAGE_URI) {
-  console.error('Usage: node scripts/mint-artifact.mjs --choice-point U001:C01:CP1 --uri https://...')
+  console.error('Usage: node scripts/mint-participation.mjs --choice-point U001:C01:CP1 --uri https://...')
   process.exit(1)
 }
 
@@ -69,7 +61,7 @@ function toHex(str) {
   return Buffer.from(str, 'utf8').toString('hex').toUpperCase()
 }
 
-async function getVotersByChoice(client, vaultAddress, choicePoint) {
+async function getAllVoters(client, vaultAddress, choicePoint) {
   const [universe, chapter, cp] = choicePoint.split(':')
   const res = await client.request({
     command: 'account_tx',
@@ -94,26 +86,13 @@ async function getVotersByChoice(client, vaultAddress, choicePoint) {
       try {
         const vote = JSON.parse(fromHex(Memo.MemoData))
         if (vote.universe === universe && vote.chapter === chapter && vote.choice_point === cp) {
-          latestVote[sender] = { choice: vote.choice, weight: vote.weight ?? 1 }
+          latestVote[sender] = vote.choice
         }
       } catch { /* skip */ }
     }
   }
 
-  // Group wallets and sum weights by choice
-  const byChoice = {}
-  for (const [wallet, { choice, weight }] of Object.entries(latestVote)) {
-    if (!byChoice[choice]) byChoice[choice] = { wallets: [], totalWeight: 0 }
-    byChoice[choice].wallets.push(wallet)
-    byChoice[choice].totalWeight += weight
-  }
-  return byChoice
-}
-
-function randomSubset(arr, pct) {
-  const count = Math.max(1, Math.floor(arr.length * pct))
-  const shuffled = [...arr].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, count)
+  return latestVote // { wallet: choiceId }
 }
 
 async function getOfferIdFromResult(result) {
@@ -132,64 +111,44 @@ await client.connect()
 const wallet = Wallet.fromSeed(vaultSecret)
 console.log(`Vault wallet: ${wallet.address}`)
 
-const byChoice = await getVotersByChoice(client, vaultAddress, CHOICE_POINT)
-console.log('\nVoters by choice:')
-for (const [choice, { wallets, totalWeight }] of Object.entries(byChoice)) {
-  console.log(`  ${choice}: ${wallets.length} voter(s), weight ${totalWeight.toFixed(2)}`)
-}
+const voterMap = await getAllVoters(client, vaultAddress, CHOICE_POINT)
+const voters = Object.keys(voterMap)
+console.log(`\nFound ${voters.length} voter(s) for ${CHOICE_POINT}`)
 
-if (Object.keys(byChoice).length === 0) {
+if (voters.length === 0) {
   console.error('No votes found for this choice point.')
   await client.disconnect()
   process.exit(1)
 }
 
-// Determine winning choice by total weight
-const winningChoice = Object.entries(byChoice)
-  .sort((a, b) => b[1].totalWeight - a[1].totalWeight)[0][0]
-const { wallets: winners, totalWeight: winnerWeight } = byChoice[winningChoice]
-const totalWeight = Object.values(byChoice).reduce((s, v) => s + v.totalWeight, 0)
-
-// Quantum yield: NFT rate scales with vote divergence
-// 50/50 → MAX_YIELD, 100/0 → MIN_YIELD
-const p = winnerWeight / totalWeight
-const yieldPct = computeYield(p)
-console.log(`\nWinning choice: ${winningChoice} (weight ${winnerWeight.toFixed(2)} / ${totalWeight.toFixed(2)} = ${Math.round(p * 100)}% consensus)`)
-console.log(`Quantum yield: ${Math.round(yieldPct * 100)}% of winners receive artifacts`)
-
-const selected = randomSubset(winners, yieldPct)
-console.log(`Minting artifacts for ${selected.length} of ${winners.length} winners:\n`)
-
 const uriHex = toHex(IMAGE_URI)
 const expiresAt = new Date(Date.now() + OFFER_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
-for (const winner of selected) {
-  console.log(`  Minting for ${winner}...`)
+for (const voter of voters) {
+  console.log(`\n  Minting participation NFT for ${voter} (voted: ${voterMap[voter]})...`)
 
-  // 1. Mint NFT
   const mintResult = await client.submitAndWait({
     TransactionType: 'NFTokenMint',
     Account: wallet.address,
     URI: uriHex,
     Flags: 8, // tfTransferable
-    NFTokenTaxon: ARTIFACT_TAXON,
+    NFTokenTaxon: PARTICIPATION_TAXON,
     SourceTag: SOURCE_TAG,
   }, { wallet })
 
   const nftTokenId = mintResult.result.meta?.nftoken_id
   if (!nftTokenId) {
-    console.error(`  Failed to get NFTokenID for ${winner}, skipping`)
+    console.error(`  Failed to get NFTokenID for ${voter}, skipping`)
     continue
   }
   console.log(`  Minted: ${nftTokenId}`)
 
-  // 2. Create sell offer (0 XRP) to this winner only
   const offerResult = await client.submitAndWait({
     TransactionType: 'NFTokenCreateOffer',
     Account: wallet.address,
     NFTokenID: nftTokenId,
     Amount: '0',
-    Destination: winner,
+    Destination: voter,
     Flags: 1, // tfSellNFToken
     SourceTag: SOURCE_TAG,
   }, { wallet })
@@ -197,23 +156,23 @@ for (const winner of selected) {
   const offerId = await getOfferIdFromResult(offerResult)
   console.log(`  Offer: ${offerId}`)
 
-  // 3. Store in DynamoDB
   await dynamo.send(new PutCommand({
     TableName: 'eigenthrope_artifacts',
     Item: {
       offer_id: offerId,
       nft_token_id: nftTokenId,
+      artifact_type: 'participation',
       choice_point: CHOICE_POINT,
-      winner_address: winner,
-      winning_choice: winningChoice,
+      winner_address: voter,
+      voted_choice: voterMap[voter],
       nft_uri: IMAGE_URI,
       status: 'pending',
       expires_at: expiresAt,
       created_at: new Date().toISOString(),
     },
   }))
-  console.log(`  Stored. Expires: ${expiresAt}\n`)
+  console.log(`  Stored. Expires: ${expiresAt}`)
 }
 
 await client.disconnect()
-console.log('Done.')
+console.log('\nDone.')

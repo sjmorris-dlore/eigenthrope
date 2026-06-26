@@ -1,6 +1,13 @@
 const XRPL_RPC = 'https://xrplcluster.com/'
-export const ARTIFACT_BONUS = 3
-export const ARTIFACT_TAXON = 1
+
+export const WINNER_TAXON = 1
+export const WINNER_BONUS = 5
+export const PARTICIPATION_TAXON = 2
+export const PARTICIPATION_BONUS = 1
+
+// Keep old export name so any stale imports don't break at runtime
+export const ARTIFACT_TAXON = WINNER_TAXON
+export const ARTIFACT_BONUS = WINNER_BONUS
 
 function fromHex(hex: string) {
   return Buffer.from(hex, 'hex').toString('utf8')
@@ -47,7 +54,10 @@ async function countVotes(account: string, vaultAddress: string): Promise<number
   return participated.size
 }
 
-async function countArtifacts(account: string, issuer: string): Promise<number> {
+async function countArtifacts(
+  account: string,
+  issuer: string
+): Promise<{ winners: number; participation: number }> {
   try {
     const res = await fetch(XRPL_RPC, {
       method: 'POST',
@@ -59,18 +69,25 @@ async function countArtifacts(account: string, issuer: string): Promise<number> 
     })
     const data = await res.json()
     const nfts: unknown[] = data.result?.account_nfts ?? []
-    return nfts.filter((nft) => {
+    let winners = 0
+    let participation = 0
+    for (const nft of nfts) {
       const n = nft as Record<string, unknown>
-      return n.Issuer === issuer && n.NFTokenTaxon === ARTIFACT_TAXON
-    }).length
+      if (n.Issuer !== issuer) continue
+      if (n.NFTokenTaxon === WINNER_TAXON) winners++
+      else if (n.NFTokenTaxon === PARTICIPATION_TAXON) participation++
+    }
+    return { winners, participation }
   } catch {
-    return 0
+    return { winners: 0, participation: 0 }
   }
 }
 
 export interface ResonanceBreakdown {
   votes: number
   artifacts: number
+  winner_artifacts: number
+  participation_artifacts: number
   resonance: number
 }
 
@@ -78,11 +95,17 @@ export async function getResonanceBreakdown(
   account: string,
   vaultAddress: string
 ): Promise<ResonanceBreakdown> {
-  const [votes, artifacts] = await Promise.all([
+  const [votes, { winners, participation }] = await Promise.all([
     countVotes(account, vaultAddress),
     countArtifacts(account, vaultAddress),
   ])
-  return { votes, artifacts, resonance: votes + 1 + artifacts * ARTIFACT_BONUS }
+  return {
+    votes,
+    winner_artifacts: winners,
+    participation_artifacts: participation,
+    artifacts: winners + participation,
+    resonance: votes + 1 + winners * WINNER_BONUS + participation * PARTICIPATION_BONUS,
+  }
 }
 
 export async function getResonance(
