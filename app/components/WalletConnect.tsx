@@ -71,7 +71,7 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   if (account) {
     const short = `${account.slice(0, 6)}…${account.slice(-4)}`
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex w-full items-center justify-center gap-3">
         <p className="font-mono text-xs text-zinc-400">{short}</p>
         <span className="text-zinc-300 dark:text-zinc-600">·</span>
         <button

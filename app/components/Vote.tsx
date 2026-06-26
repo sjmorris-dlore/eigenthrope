@@ -140,7 +140,7 @@ export default function Vote({ account }: VoteProps) {
   if (chapter.status === 'closed') {
     return (
       <div className="flex w-full flex-col gap-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+        <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
           {chapter.chapter_label}
         </p>
         {chapter.outcome_text ? (
