@@ -195,8 +195,15 @@ function NewChapterForm({
 
 // ─── Library ─────────────────────────────────────────────────────────────────
 
+function normalizeIpfsUri(input: string): string {
+  const m = input.match(/\/ipfs\/(.+)/)
+  if (m) return `ipfs://${m[1].trim()}`
+  return input.trim()
+}
+
 function ipfsToGateway(uri: string) {
-  return uri.replace('ipfs://', 'https://ipfs.io/ipfs/')
+  if (uri.startsWith('ipfs://')) return uri.replace('ipfs://', 'https://ipfs.io/ipfs/')
+  return uri
 }
 
 function ImageSlot({
@@ -238,11 +245,12 @@ function ImageSlot({
     setSaving(true)
     setStatus('')
     const field = type === 'winner' ? 'winner_nft_uri' : 'participation_nft_uri'
+    const normalized = normalizeIpfsUri(manualUri)
     try {
       const res = await fetch('/api/admin/chapter-data', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ choice_point: choicePoint, [field]: manualUri.trim() }),
+        body: JSON.stringify({ choice_point: choicePoint, [field]: normalized }),
       })
       if (res.ok) { setStatus('Saved.'); setManualUri(''); onRefresh() }
       else { const d = await res.json(); setStatus(`Error: ${d.error}`) }
@@ -290,7 +298,7 @@ function ImageSlot({
         <input
           value={manualUri}
           onChange={e => setManualUri(e.target.value)}
-          placeholder="ipfs://…"
+          placeholder="ipfs://… or gateway URL"
           className={`${smallInputClass} flex-1 font-mono`}
         />
         <button onClick={saveUri} disabled={saving || !manualUri.trim()} className={smallBtnClass}>
