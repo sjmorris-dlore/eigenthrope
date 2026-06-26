@@ -195,7 +195,6 @@ export default function Vote({ account }: VoteProps) {
         {chapter.chapter_label}
       </p>
       {chapter.story_text && <StoryText text={chapter.story_text} />}
-      {chapter.choice_intro_text && <StoryText text={chapter.choice_intro_text} />}
       <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
           Your Observation
@@ -203,6 +202,11 @@ export default function Vote({ account }: VoteProps) {
         <p className="text-base leading-7 text-zinc-800 dark:text-zinc-200">
           {chapter.prompt}
         </p>
+        {chapter.choice_intro_text && (
+          <div className="mt-5">
+            <ReactMarkdown components={storyComponents}>{chapter.choice_intro_text}</ReactMarkdown>
+          </div>
+        )}
         <ChapterTimer className="mt-2" />
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
         <p className="mt-5 rounded-lg bg-zinc-50 px-4 py-3 text-xs leading-5 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
