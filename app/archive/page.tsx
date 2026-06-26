@@ -36,12 +36,6 @@ export default async function ArchivePage() {
       <main className="flex w-full max-w-2xl flex-col gap-16">
 
         <div className="flex flex-col gap-6">
-          <Link
-            href="/"
-            className="w-fit text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-          >
-            ← Eigenthrope
-          </Link>
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               Archive

@@ -177,12 +177,6 @@ export default async function UniverseArchivePage({
 
         {/* Header */}
         <div className="flex flex-col gap-6">
-          <Link
-            href="/archive"
-            className="w-fit text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-          >
-            ← Archive
-          </Link>
           <div>
             <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
               {u.universe_id}
