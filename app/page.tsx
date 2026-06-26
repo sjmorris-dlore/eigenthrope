@@ -1,5 +1,6 @@
 import App from '@/app/components/App'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -12,6 +13,14 @@ export default function Home() {
           <p className="text-lg text-zinc-500 dark:text-zinc-400">
             A mystery the community uncovers.
           </p>
+          <div className="absolute left-0 top-0">
+            <Link
+              href="/archive"
+              className="text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+            >
+              Archive
+            </Link>
+          </div>
           <div className="absolute right-0 top-0">
             <ThemeToggle />
           </div>
