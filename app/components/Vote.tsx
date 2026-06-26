@@ -43,6 +43,30 @@ function StoryText({ text }: { text: string }) {
   )
 }
 
+function CollapsibleStory({ text }: { text: string }) {
+  const [collapsed, setCollapsed] = useState(false)
+  return (
+    <div className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="flex items-center justify-between px-8 pt-6 sm:px-12">
+        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">Story</span>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+        >
+          {collapsed ? 'Read ↓' : 'Collapse ↑'}
+        </button>
+      </div>
+      {collapsed ? (
+        <div className="px-8 pb-6 sm:px-12" />
+      ) : (
+        <div className="px-8 pb-10 pt-6 text-left sm:px-12">
+          <ReactMarkdown components={storyComponents}>{text}</ReactMarkdown>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Vote({ account }: VoteProps) {
   const [chapter, setChapter] = useState<ChapterData | null>(null)
   const [pending, setPending] = useState<string | null>(null)
@@ -194,7 +218,7 @@ export default function Vote({ account }: VoteProps) {
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
         {chapter.chapter_label}
       </p>
-      {chapter.story_text && <StoryText text={chapter.story_text} />}
+      {chapter.story_text && <CollapsibleStory text={chapter.story_text} />}
       <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
           Your Observation
