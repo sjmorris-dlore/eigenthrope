@@ -1,6 +1,7 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion } from '@/lib/config'
+import { postDiscord, chapterClosedEmbed } from '@/lib/discord'
 import type { ChapterData } from '@/app/api/chapter/route'
 
 const XRPL_RPC = 'https://xrplcluster.com/'
@@ -130,6 +131,14 @@ export async function GET(request: Request) {
       ':yp': yieldPct,
     },
   }))
+
+  const winningLabel = winningChoice ? chapter.choices?.[winningChoice]?.label ?? null : null
+  await postDiscord(chapterClosedEmbed(
+    chapter.chapter_label ?? choicePoint,
+    winningChoice,
+    winningLabel,
+    finalTally,
+  ))
 
   return Response.json({
     closed: choicePoint,
