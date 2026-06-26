@@ -202,7 +202,8 @@ function normalizeIpfsUri(input: string): string {
 }
 
 function ipfsToGateway(uri: string) {
-  if (uri.startsWith('ipfs://')) return uri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')
+  const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? 'gateway.pinata.cloud'
+  if (uri.startsWith('ipfs://')) return uri.replace('ipfs://', `https://${gateway}/ipfs/`)
   return uri
 }
 
@@ -275,6 +276,7 @@ function ImageSlot({
               const img = e.currentTarget
               const cid = uri.replace('ipfs://', '')
               const fallbacks = [
+                `https://teal-manual-junglefowl-646.mypinata.cloud/ipfs/${cid}`,
                 `https://ipfs.io/ipfs/${cid}`,
                 `https://cloudflare-ipfs.com/ipfs/${cid}`,
               ]
