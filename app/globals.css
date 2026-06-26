@@ -25,3 +25,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes glow-pulse {
+  0%, 100% { text-shadow: 0 0 0px rgba(251, 191, 36, 0); }
+  50%       { text-shadow: 0 0 8px rgba(251, 191, 36, 0.8), 0 0 20px rgba(251, 191, 36, 0.3); }
+}
+
+.glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}

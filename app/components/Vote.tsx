@@ -4,19 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import type { ChapterData } from '@/app/api/chapter/route'
+import ChapterTimer from './ChapterTimer'
 
 interface VoteProps {
   account: string
-}
-
-function timeRemaining(closesAt: string): string {
-  const ms = new Date(closesAt).getTime() - Date.now()
-  if (ms <= 0) return 'Voting has closed'
-  const hours = Math.floor(ms / (1000 * 60 * 60))
-  const days = Math.floor(hours / 24)
-  if (days > 0) return `${days} day${days !== 1 ? 's' : ''} remaining`
-  if (hours > 0) return `${hours} hour${hours !== 1 ? 's' : ''} remaining`
-  return 'Less than an hour remaining'
 }
 
 const storyComponents: Components = {
@@ -211,9 +202,7 @@ export default function Vote({ account }: VoteProps) {
         <p className="text-base leading-7 text-zinc-800 dark:text-zinc-200">
           {chapter.prompt}
         </p>
-        {chapter.voting_closes_at && (
-          <p className="mt-2 text-xs text-zinc-500">{timeRemaining(chapter.voting_closes_at)}</p>
-        )}
+        <ChapterTimer className="mt-2" />
         {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
         <div className="mt-6 flex flex-col gap-3">
           {Object.entries(chapter.choices).map(([id, choice]) => (

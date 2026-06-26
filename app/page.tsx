@@ -1,4 +1,5 @@
 import App from '@/app/components/App'
+import ChapterTimer from '@/app/components/ChapterTimer'
 
 export default function Home() {
   return (
@@ -11,6 +12,7 @@ export default function Home() {
           <p className="text-lg text-zinc-500 dark:text-zinc-400">
             A mystery the community uncovers.
           </p>
+          <ChapterTimer />
         </div>
 
         <App />
