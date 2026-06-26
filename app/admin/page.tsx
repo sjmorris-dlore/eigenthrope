@@ -94,6 +94,8 @@ export default function AdminPage() {
   const [announcing, setAnnouncing] = useState(false)
   const [resetting, setResetting] = useState(false)
 
+  const [contentChoicePoint, setContentChoicePoint] = useState<string | null>(null)
+
   const loadData = useCallback(async () => {
     try {
       const [chapterRes, tallyRes] = await Promise.all([
@@ -109,6 +111,22 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Pre-populate textareas from S3 once per choice_point
+  useEffect(() => {
+    if (!chapter || chapter.choice_point === contentChoicePoint) return
+    setContentChoicePoint(chapter.choice_point)
+
+    fetch('/api/admin/chapter-content')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        if (data.story_text) setStoryContent(data.story_text)
+        if (data.epilogue_text) setEpilogueContent(data.epilogue_text)
+        if (data.choice_outcome_texts) setChoiceContents(data.choice_outcome_texts)
+      })
+      .catch(() => {/* non-fatal */})
+  }, [chapter, contentChoicePoint])
 
   async function signOut() {
     await fetch('/api/admin/auth', { method: 'DELETE' })
