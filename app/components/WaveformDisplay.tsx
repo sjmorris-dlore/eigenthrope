@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 
 const SVG_W = 300
 const SVG_H = 150
@@ -8,8 +8,6 @@ const BASE_Y = SVG_H - 12
 const CENTER_X = SVG_W / 2
 const SIGMA_MIN = 18
 const SIGMA_MAX = 88
-// Normalizing constant: keeps area under each curve roughly fixed
-// so neither wave visually "dominates" just due to sigma change
 const K = SIGMA_MIN * 120
 
 export const MAX_YIELD = 0.25
@@ -24,26 +22,23 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * Math.max(0, Math.min(1, t))
 }
 
-function gaussianArea(sigma: number, amplitude: number): string {
+// Builds area + stroke paths in one pass to halve Math.exp calls per frame
+function buildPaths(sigma: number, amplitude: number, time: number) {
   const pts: string[] = []
-  for (let i = 0; i <= 200; i++) {
-    const x = (i / 200) * SVG_W
+  for (let i = 0; i <= 120; i++) {
+    const x = (i / 120) * SVG_W
     const g = Math.exp(-0.5 * ((x - CENTER_X) / sigma) ** 2)
-    const y = Math.max(0, BASE_Y - amplitude * g)
+    // Shimmer: two sine waves along the surface, scaled by g so ripples fade at the edges
+    const shimmer = (
+      Math.sin(x * 0.13 + time * 0.0014) * 2.8 +
+      Math.sin(x * 0.37 + time * 0.0021) * 1.3
+    ) * g
+    const y = Math.max(0, BASE_Y - amplitude * g - shimmer)
     pts.push(`${x.toFixed(1)},${y.toFixed(1)}`)
   }
-  return `M 0,${BASE_Y} L ${pts.join(' L ')} L ${SVG_W},${BASE_Y} Z`
-}
-
-function gaussianStroke(sigma: number, amplitude: number): string {
-  const pts: string[] = []
-  for (let i = 0; i <= 200; i++) {
-    const x = (i / 200) * SVG_W
-    const g = Math.exp(-0.5 * ((x - CENTER_X) / sigma) ** 2)
-    const y = Math.max(0, BASE_Y - amplitude * g)
-    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`)
-  }
-  return 'M ' + pts.join(' L ')
+  const stroke = 'M ' + pts.join(' L ')
+  const area = `M 0,${BASE_Y} L ${pts.join(' L ')} L ${SVG_W},${BASE_Y} Z`
+  return { area, stroke }
 }
 
 export default function WaveformDisplay() {
@@ -76,10 +71,42 @@ export default function WaveformDisplay() {
   const ampY = K / sigmaY
   const yieldPct = computeYield(p)
 
-  const areaC = useMemo(() => gaussianArea(sigmaC, ampC), [sigmaC, ampC])
-  const areaY = useMemo(() => gaussianArea(sigmaY, ampY), [sigmaY, ampY])
-  const strokeC = useMemo(() => gaussianStroke(sigmaC, ampC), [sigmaC, ampC])
-  const strokeY = useMemo(() => gaussianStroke(sigmaY, ampY), [sigmaY, ampY])
+  // Initial static paths for first render — animation loop takes over immediately
+  const init = useMemo(() => ({
+    C: buildPaths(sigmaC, ampC, 0),
+    Y: buildPaths(sigmaY, ampY, 0),
+  }), [sigmaC, ampC, sigmaY, ampY])
+
+  // Refs for direct DOM updates — bypasses React reconciliation for smooth 60fps
+  const areaCRef = useRef<SVGPathElement>(null)
+  const strokeCGlowRef = useRef<SVGPathElement>(null)
+  const strokeCBrightRef = useRef<SVGPathElement>(null)
+  const areaYRef = useRef<SVGPathElement>(null)
+  const strokeYGlowRef = useRef<SVGPathElement>(null)
+  const strokeYBrightRef = useRef<SVGPathElement>(null)
+
+  useEffect(() => {
+    let animId: number
+    const animate = (ts: number) => {
+      // Two waves breathe with a ~4s period, offset by ~120° so they move independently
+      const breatheC = 1 + Math.sin(ts * 0.00085) * 0.11
+      const breatheY = 1 + Math.sin(ts * 0.00085 + 2.1) * 0.11
+
+      const { area: aC, stroke: sC } = buildPaths(sigmaC, ampC * breatheC, ts)
+      const { area: aY, stroke: sY } = buildPaths(sigmaY, ampY * breatheY, ts)
+
+      areaCRef.current?.setAttribute('d', aC)
+      strokeCGlowRef.current?.setAttribute('d', sC)
+      strokeCBrightRef.current?.setAttribute('d', sC)
+      areaYRef.current?.setAttribute('d', aY)
+      strokeYGlowRef.current?.setAttribute('d', sY)
+      strokeYBrightRef.current?.setAttribute('d', sY)
+
+      animId = requestAnimationFrame(animate)
+    }
+    animId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(animId)
+  }, [sigmaC, ampC, sigmaY, ampY])
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
@@ -93,19 +120,18 @@ export default function WaveformDisplay() {
         height={SVG_H}
         className="w-full overflow-visible"
       >
-        {/* Baseline */}
         <line x1={0} y1={BASE_Y} x2={SVG_W} y2={BASE_Y}
           stroke="rgb(63,63,70)" strokeWidth={1} />
 
         {/* Yield wave — amber */}
-        <path d={areaY} fill="rgba(251,191,36,0.06)" />
-        <path d={strokeY} fill="none" stroke="rgba(251,191,36,0.15)" strokeWidth={7} />
-        <path d={strokeY} fill="none" stroke="rgba(251,191,36,0.80)" strokeWidth={1.5} />
+        <path ref={areaYRef} d={init.Y.area} fill="rgba(251,191,36,0.06)" />
+        <path ref={strokeYGlowRef} d={init.Y.stroke} fill="none" stroke="rgba(251,191,36,0.15)" strokeWidth={7} />
+        <path ref={strokeYBrightRef} d={init.Y.stroke} fill="none" stroke="rgba(251,191,36,0.80)" strokeWidth={1.5} />
 
         {/* Certainty wave — white */}
-        <path d={areaC} fill="rgba(255,255,255,0.03)" />
-        <path d={strokeC} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth={7} />
-        <path d={strokeC} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+        <path ref={areaCRef} d={init.C.area} fill="rgba(255,255,255,0.03)" />
+        <path ref={strokeCGlowRef} d={init.C.stroke} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth={7} />
+        <path ref={strokeCBrightRef} d={init.C.stroke} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
       </svg>
 
       <div className="flex w-full justify-between text-xs text-zinc-500">
