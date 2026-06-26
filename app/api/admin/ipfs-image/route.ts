@@ -6,9 +6,12 @@ export async function GET(request: Request) {
   if (!jwt) return new Response('PINATA_JWT not configured', { status: 500 })
 
   const gateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? 'gateway.pinata.cloud'
-  const res = await fetch(`https://${gateway}/ipfs/${cid}`, {
-    headers: { Authorization: `Bearer ${jwt}` },
-  })
+  const gatewayKey = process.env.PINATA_GATEWAY_KEY
+
+  const headers: Record<string, string> = {}
+  if (gatewayKey) headers['x-pinata-gateway-token'] = gatewayKey
+
+  const res = await fetch(`https://${gateway}/ipfs/${cid}`, { headers })
 
   if (!res.ok) return new Response('Failed to fetch from Pinata', { status: res.status })
 
