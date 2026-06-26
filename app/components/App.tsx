@@ -30,9 +30,7 @@ export default function App() {
               <ObserverProfile account={account} />
             </div>
           )}
-          <div className="rounded-xl bg-zinc-950 p-5">
-            <WaveformDisplay />
-          </div>
+          <WaveformDisplay />
         </aside>
 
       </div>
