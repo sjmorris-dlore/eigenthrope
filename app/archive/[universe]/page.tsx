@@ -6,6 +6,11 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 
+// Revalidate every 5 minutes so NFT ownership stays reasonably fresh
+export const revalidate = 300
+
+const XRPL_RPC = 'https://xrplcluster.com/'
+
 interface Choice {
   label: string
   description: string
@@ -26,6 +31,7 @@ interface ChapterRecord {
 interface UniverseRecord {
   universe_id: string
   title: string
+  status: string
   completed_at?: string
 }
 
@@ -54,6 +60,10 @@ const proseComponents: Components = {
   hr: () => <hr className="my-12 border-zinc-200 dark:border-zinc-800" />,
 }
 
+function shortAddress(addr: string) {
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`
+}
+
 async function getUniverse(id: string): Promise<UniverseRecord | null> {
   try {
     const result = await dynamo.send(new GetCommand({
@@ -61,7 +71,7 @@ async function getUniverse(id: string): Promise<UniverseRecord | null> {
       Key: { universe_id: id.toUpperCase() },
     }))
     const item = result.Item as UniverseRecord | undefined
-    if (!item || (item as unknown as Record<string, string>).status !== 'completed') return null
+    if (!item || item.status !== 'completed') return null
     return item
   } catch {
     return null
@@ -93,6 +103,54 @@ async function getChapters(universeId: string): Promise<ChapterRecord[]> {
   )
 }
 
+// Returns unique current holders of winner NFTs (taxon 1) for this universe.
+// Winner artifacts in DynamoDB have no artifact_type field (participation ones do).
+async function getWinnerNFTHolders(universeId: string): Promise<string[]> {
+  try {
+    const result = await dynamo.send(new ScanCommand({
+      TableName: 'eigenthrope_artifacts',
+      FilterExpression:
+        'begins_with(choice_point, :prefix) AND #s = :claimed AND attribute_not_exists(artifact_type)',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: {
+        ':prefix': `${universeId.toUpperCase()}:`,
+        ':claimed': 'claimed',
+      },
+      ProjectionExpression: 'nft_token_id',
+    }))
+
+    const tokenIds = (result.Items ?? [])
+      .map((item) => item.nft_token_id as string)
+      .filter(Boolean)
+
+    if (tokenIds.length === 0) return []
+
+    // Query current owner of each NFT from XRPL
+    const owners = await Promise.all(
+      tokenIds.map(async (nftId) => {
+        try {
+          const res = await fetch(XRPL_RPC, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              method: 'nft_info',
+              params: [{ nft_id: nftId }],
+            }),
+          })
+          const data = await res.json()
+          return data.result?.owner as string | undefined
+        } catch {
+          return undefined
+        }
+      })
+    )
+
+    return [...new Set(owners.filter((o): o is string => Boolean(o)))]
+  } catch {
+    return []
+  }
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ universe: string }> }) {
   const { universe } = await params
   const u = await getUniverse(universe)
@@ -105,9 +163,10 @@ export default async function UniverseArchivePage({
   params: Promise<{ universe: string }>
 }) {
   const { universe } = await params
-  const [u, chapters] = await Promise.all([
+  const [u, chapters, winnerHolders] = await Promise.all([
     getUniverse(universe),
     getChapters(universe),
+    getWinnerNFTHolders(universe),
   ])
 
   if (!u) notFound()
@@ -155,19 +214,16 @@ export default async function UniverseArchivePage({
               return (
                 <div key={ch.choice_point} className="flex flex-col gap-10">
 
-                  {/* Chapter label */}
                   <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
                     {ch.chapter_label}
                   </p>
 
-                  {/* Story text */}
                   {ch.story_text && (
                     <ReactMarkdown components={proseComponents}>
                       {ch.story_text}
                     </ReactMarkdown>
                   )}
 
-                  {/* The community's choice */}
                   {winningLabel && (
                     <div className="flex flex-col items-center gap-3 py-2">
                       <div className="h-px w-12 bg-zinc-300 dark:bg-zinc-700" />
@@ -178,14 +234,12 @@ export default async function UniverseArchivePage({
                     </div>
                   )}
 
-                  {/* Outcome text */}
                   {ch.outcome_text && (
                     <ReactMarkdown components={proseComponents}>
                       {ch.outcome_text}
                     </ReactMarkdown>
                   )}
 
-                  {/* Chapter separator (not after the last one) */}
                   {i < chapters.length - 1 && (
                     <div className="flex items-center gap-4">
                       <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
@@ -199,6 +253,27 @@ export default async function UniverseArchivePage({
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Winner artifact holders */}
+        {winnerHolders.length > 0 && (
+          <div className="flex flex-col gap-5 border-t border-zinc-200 pt-12 dark:border-zinc-800">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+              Winner Artifacts
+            </p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              {winnerHolders.length === 1
+                ? 'One artifact from this universe is in circulation.'
+                : `${winnerHolders.length} artifacts from this universe are in circulation.`}
+            </p>
+            <div className="flex flex-col gap-2">
+              {winnerHolders.map((addr) => (
+                <p key={addr} className="font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                  {shortAddress(addr)}
+                </p>
+              ))}
+            </div>
           </div>
         )}
 
