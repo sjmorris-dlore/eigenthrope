@@ -37,6 +37,24 @@ export async function GET() {
   return Response.json(result)
 }
 
+export async function PATCH(request: Request) {
+  const { universe_id, title } = await request.json() as { universe_id: string; title: string }
+
+  if (!universe_id || !title) {
+    return Response.json({ error: 'universe_id and title are required' }, { status: 400 })
+  }
+
+  const { UpdateCommand } = await import('@aws-sdk/lib-dynamodb')
+  await dynamo.send(new UpdateCommand({
+    TableName: 'eigenthrope_universes',
+    Key: { universe_id: universe_id.toUpperCase() },
+    UpdateExpression: 'SET title = :t',
+    ExpressionAttributeValues: { ':t': title.trim() },
+  }))
+
+  return Response.json({ ok: true })
+}
+
 export async function POST(request: Request) {
   const { universe_id, title } = await request.json() as { universe_id: string; title: string }
 

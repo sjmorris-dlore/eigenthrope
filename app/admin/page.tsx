@@ -209,6 +209,9 @@ function UniverseNav({
   const [universeError, setUniverseError] = useState('')
   const [newChapterFor, setNewChapterFor] = useState<string | null>(null)
   const [activating, setActivating] = useState<string | null>(null)
+  const [renamingUniverse, setRenamingUniverse] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renaming, setRenaming] = useState(false)
 
   const loadUniverses = useCallback(async () => {
     const res = await fetch('/api/admin/universes')
@@ -269,7 +272,45 @@ function UniverseNav({
             </button>
 
             {expanded === u.universe_id && (
-              <div className="ml-3 mt-1 space-y-1 border-l border-zinc-200 pl-3 dark:border-zinc-700">
+              <div className="ml-3 mt-1 space-y-2 border-l border-zinc-200 pl-3 dark:border-zinc-700">
+
+                {/* Rename */}
+                {renamingUniverse === u.universe_id ? (
+                  <div className="flex items-center gap-2 py-1">
+                    <input
+                      autoFocus
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      className={`${smallInputClass} flex-1`}
+                    />
+                    <button
+                      disabled={renaming}
+                      onClick={async () => {
+                        if (!renameValue.trim()) return
+                        setRenaming(true)
+                        await fetch('/api/admin/universes', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ universe_id: u.universe_id, title: renameValue }),
+                        })
+                        setRenamingUniverse(null)
+                        setRenaming(false)
+                        await loadUniverses()
+                      }}
+                      className={smallBtnClass}
+                    >
+                      {renaming ? '…' : 'Save'}
+                    </button>
+                    <button onClick={() => setRenamingUniverse(null)} className="text-[11px] text-zinc-400 hover:text-zinc-600">Cancel</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setRenamingUniverse(u.universe_id); setRenameValue(u.title) }}
+                    className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  >
+                    Rename: {u.title}
+                  </button>
+                )}
                 {u.chapters.length === 0 && (
                   <p className="py-1 text-[11px] text-zinc-400">No chapters yet.</p>
                 )}
