@@ -271,8 +271,24 @@ function ImageSlot({
             src={ipfsToGateway(uri)}
             alt={label}
             className="h-32 w-full rounded object-contain bg-zinc-100 dark:bg-zinc-800"
+            onError={e => {
+              const img = e.currentTarget
+              const cid = uri.replace('ipfs://', '')
+              const fallbacks = [
+                `https://ipfs.io/ipfs/${cid}`,
+                `https://cloudflare-ipfs.com/ipfs/${cid}`,
+              ]
+              const tried = parseInt(img.dataset.tried ?? '0')
+              if (tried < fallbacks.length) {
+                img.dataset.tried = String(tried + 1)
+                img.src = fallbacks[tried]
+              }
+            }}
           />
-          <p className="break-all font-mono text-[10px] text-zinc-400">{uri}</p>
+          <a href={ipfsToGateway(uri)} target="_blank" rel="noopener noreferrer"
+            className="break-all font-mono text-[10px] text-zinc-400 hover:text-zinc-600 underline">
+            {uri}
+          </a>
         </div>
       ) : (
         <div className="flex h-32 items-center justify-center rounded border-2 border-dashed border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
