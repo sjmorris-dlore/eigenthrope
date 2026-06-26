@@ -5,7 +5,7 @@ import { putStoryText } from '@/lib/s3'
 export async function POST(request: Request) {
   const { choice_point, type, content, choice_id } = await request.json() as {
     choice_point: string
-    type: 'story' | 'choice_outcome' | 'epilogue'
+    type: 'story' | 'choice_intro' | 'choice_outcome' | 'epilogue'
     content: string
     choice_id?: string
   }
@@ -19,6 +19,8 @@ export async function POST(request: Request) {
   let s3Key: string
   if (type === 'story') {
     s3Key = `${universe}/${chapter}/story.md`
+  } else if (type === 'choice_intro') {
+    s3Key = `${universe}/${chapter}/choice_intro.md`
   } else if (type === 'epilogue') {
     s3Key = `${universe}/${chapter}/epilogue.md`
   } else if (type === 'choice_outcome') {
@@ -35,6 +37,13 @@ export async function POST(request: Request) {
       TableName: 'eigenthrope_chapters',
       Key: { choice_point },
       UpdateExpression: 'SET story_key = :key',
+      ExpressionAttributeValues: { ':key': s3Key },
+    }))
+  } else if (type === 'choice_intro') {
+    await dynamo.send(new UpdateCommand({
+      TableName: 'eigenthrope_chapters',
+      Key: { choice_point },
+      UpdateExpression: 'SET choice_intro_key = :key',
       ExpressionAttributeValues: { ':key': s3Key },
     }))
   } else if (type === 'epilogue') {

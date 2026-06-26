@@ -16,6 +16,7 @@ interface ChapterData {
   choices: Record<string, Choice>
   voting_closes_at: string
   story_key?: string
+  choice_intro_key?: string
   choice_outcomes?: Record<string, string>
   epilogue_key?: string
   winning_choice?: string
@@ -78,9 +79,11 @@ export default function AdminPage() {
   const [loadError, setLoadError] = useState('')
 
   const [storyContent, setStoryContent] = useState('')
+  const [choiceIntroContent, setChoiceIntroContent] = useState('')
   const [choiceContents, setChoiceContents] = useState<Record<string, string>>({})
   const [epilogueContent, setEpilogueContent] = useState('')
   const [storyStatus, setStoryStatus] = useState('')
+  const [choiceIntroStatus, setChoiceIntroStatus] = useState('')
   const [choiceStatuses, setChoiceStatuses] = useState<Record<string, string>>({})
   const [epilogueStatus, setEpilogueStatus] = useState('')
 
@@ -89,6 +92,7 @@ export default function AdminPage() {
   const [resetStatus, setResetStatus] = useState('')
 
   const [uploadingStory, setUploadingStory] = useState(false)
+  const [uploadingChoiceIntro, setUploadingChoiceIntro] = useState(false)
   const [uploadingChoices, setUploadingChoices] = useState<Record<string, boolean>>({})
   const [uploadingEpilogue, setUploadingEpilogue] = useState(false)
   const [announcing, setAnnouncing] = useState(false)
@@ -122,6 +126,7 @@ export default function AdminPage() {
       .then(data => {
         if (!data) return
         if (data.story_text) setStoryContent(data.story_text)
+        if (data.choice_intro_text) setChoiceIntroContent(data.choice_intro_text)
         if (data.epilogue_text) setEpilogueContent(data.epilogue_text)
         if (data.choice_outcome_texts) setChoiceContents(data.choice_outcome_texts)
       })
@@ -134,22 +139,25 @@ export default function AdminPage() {
   }
 
   async function uploadContent(
-    type: 'story' | 'choice_outcome' | 'epilogue',
+    type: 'story' | 'choice_intro' | 'choice_outcome' | 'epilogue',
     choice_id?: string
   ) {
     if (!chapter) return
     const content =
       type === 'story' ? storyContent
+      : type === 'choice_intro' ? choiceIntroContent
       : type === 'epilogue' ? epilogueContent
       : choiceContents[choice_id!] ?? ''
 
     const setStatus =
       type === 'story' ? setStoryStatus
+      : type === 'choice_intro' ? setChoiceIntroStatus
       : type === 'epilogue' ? setEpilogueStatus
       : (msg: string) => setChoiceStatuses(s => ({ ...s, [choice_id!]: msg }))
 
     const setUploading =
       type === 'story' ? setUploadingStory
+      : type === 'choice_intro' ? setUploadingChoiceIntro
       : type === 'epilogue' ? setUploadingEpilogue
       : (v: boolean) => setUploadingChoices(s => ({ ...s, [choice_id!]: v }))
 
@@ -327,6 +335,31 @@ export default function AdminPage() {
                 {uploadingStory ? 'Uploading…' : 'Upload Story'}
               </button>
               <ActionStatus message={storyStatus} />
+            </div>
+
+            {/* Choice intro — narrative bridge before the vote buttons */}
+            <div>
+              <label className="mb-1.5 block text-xs text-zinc-500">
+                Choice intro{chapter?.choice_intro_key ? ` — ${chapter.choice_intro_key}` : ' — not uploaded'}
+              </label>
+              <p className="mb-2 text-xs text-zinc-400 dark:text-zinc-600">
+                Short narrative bridge shown between the story and the voting options. Choice labels and descriptions are auto-rendered from the chapter data below it.
+              </p>
+              <textarea
+                value={choiceIntroContent}
+                onChange={e => setChoiceIntroContent(e.target.value)}
+                placeholder="Evelyn has only one chance…"
+                rows={4}
+                className={monoInputClass}
+              />
+              <button
+                onClick={() => uploadContent('choice_intro')}
+                disabled={uploadingChoiceIntro || !chapter}
+                className={`mt-2 ${btnClass}`}
+              >
+                {uploadingChoiceIntro ? 'Uploading…' : 'Upload Choice Intro'}
+              </button>
+              <ActionStatus message={choiceIntroStatus} />
             </div>
 
             {/* Per-choice outcomes */}

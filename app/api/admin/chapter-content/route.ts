@@ -27,8 +27,9 @@ export async function GET() {
 
   const choiceOutcomeEntries = Object.entries(chapter.choice_outcomes ?? {})
 
-  const [storyText, epilogueText, ...choiceTexts] = await Promise.all([
+  const [storyText, choiceIntroText, epilogueText, ...choiceTexts] = await Promise.all([
     chapter.story_key ? fetchStoryText(chapter.story_key) : Promise.resolve(null),
+    chapter.choice_intro_key ? fetchStoryText(chapter.choice_intro_key) : Promise.resolve(null),
     chapter.epilogue_key ? fetchStoryText(chapter.epilogue_key) : Promise.resolve(null),
     ...choiceOutcomeEntries.map(([, key]) => fetchStoryText(key)),
   ])
@@ -40,6 +41,7 @@ export async function GET() {
 
   return Response.json({
     story_text: storyText ?? null,
+    choice_intro_text: choiceIntroText ?? null,
     choice_outcome_texts,
     epilogue_text: epilogueText ?? null,
   })
