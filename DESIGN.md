@@ -53,19 +53,17 @@ The backend should track the current state of reality, not an ever-expanding bra
 Example:
 
 ```
-Universe: U001 — 1963 Bank Robbery
+Universe: UXXX — [setting]
 
 Immutable Facts:
-- Hero chased the fleeing man
-- Antagonist escaped
-- Archive remained unsecured
-- Woman stayed at the scene
+- [consequence of winning choice]
+- [consequence of winning choice]
+- ...
 
 Knowledge State:
-- Antagonist predicted Hero: true
-- Archive target identified: false
-- Photograph thread: state 1
-- Woman anomaly thread: state 0
+- [mystery thread]: [state]
+- [clue]: [discovered | not discovered]
+- ...
 ```
 
 The next chapter is written from this state.
@@ -289,7 +287,7 @@ Some deeper clues only become accessible after prerequisite clues have been disc
 
 Clues are not just facts — they are *objects* with a life across universes. A physical item (a photograph, a document, a scar) can appear in multiple states depending on where and when in the multiverse the community is observing it.
 
-**Example:** A photograph exists in Universe 1 with a face burned away. In a later universe set earlier in time, the photograph is intact — and a subsequent chapter shows the moment it was taken. The object is the same; the community's knowledge of it deepens across universes.
+**Example:** An object exists in Universe 1 in a damaged state. In a later universe set earlier in time, the same object is intact — and a subsequent chapter shows the moment it was damaged. The object is the same; the community's knowledge of it deepens across universes.
 
 This creates an archaeological dynamic: the community doesn't just collect clues, they *understand* them more deeply over time.
 
@@ -301,28 +299,24 @@ This creates an archaeological dynamic: the community doesn't just collect clues
 #### Clue Schema (DynamoDB: `eigenthrope_clues`)
 
 ```
-PK: clue_id            e.g. "CLUE_PHOTOGRAPH_001"
-- name                 "The Photograph"
+PK: clue_id            e.g. "CLUE_OBJECT_001"
+- name                 "The Object"
 - status               "dormant" | "active" | "discovered"
 - state_description    Authored free text describing the object's current observed state.
                        This is what the community sees. Updated by the author as the
                        story evolves across universes.
-                       e.g. "A black and white photograph of three people.
-                             The face on the right has been burned away."
 - appearances          Array of planned appearances (author planning tool, not exposed to players):
                        [
                          { universe, chapter, condition, state, note },
                          ...
                        ]
-                       e.g. { universe: "U001", chapter: "C02",
-                              condition: "choice A wins",
-                              state: "burned",
-                              note: "found in the Antagonist's desk" }
-- prerequisite_clues   ["CLUE_DARKROOM_001"] — clues that must be discovered first
-- choice_path          Which choice reveals this clue, e.g. "U001:C01:CP1:A"
+- prerequisite_clues   ["CLUE_OTHER_001"] — clues that must be discovered first
+- choice_path          Which choice reveals this clue, e.g. "UXXX:CXX:CP1:A"
 - discovered_at        ISO timestamp | null
-- discovered_in_universe  "U001" | null
+- discovered_in_universe  "UXXX" | null
 ```
+
+*Active clue pool and live universe state are in the private repository.*
 
 #### Discovered Clues (DynamoDB: `eigenthrope_discoveries`)
 
