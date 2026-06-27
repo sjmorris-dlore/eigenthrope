@@ -24,6 +24,9 @@ export interface ChapterData {
   epilogue_key?: string
   winning_choice?: string
   final_tally?: Record<string, number>
+  final_yield_pct?: number
+  winner_nft_uri?: string
+  participation_nft_uri?: string
   participation_image_key?: string
   winner_image_key?: string
   // Populated server-side from S3, not stored in DB
