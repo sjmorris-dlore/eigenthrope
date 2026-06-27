@@ -17,6 +17,13 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'EIGENTHROPE_VAULT_ADDRESS not set' }, { status: 500 })
   }
 
+  const apiKey = process.env.NEXT_PUBLIC_XAMAN_API_KEY
+  const apiSecret = process.env.XAMAN_API_SECRET
+  if (!apiKey || !apiSecret) {
+    console.error('[vote] Missing Xaman credentials — key:', !!apiKey, 'secret:', !!apiSecret)
+    return Response.json({ error: 'Xaman credentials not configured' }, { status: 500 })
+  }
+
   const [weight, rv] = await Promise.all([
     getResonance(account.trim(), vaultAddress),
     getResetVersion(),
@@ -52,8 +59,8 @@ export async function POST(request: NextRequest) {
   const res = await fetch(XAMAN_API, {
     method: 'POST',
     headers: {
-      'X-API-Key': process.env.NEXT_PUBLIC_XAMAN_API_KEY!,
-      'X-API-Secret': process.env.XAMAN_API_SECRET!,
+      'X-API-Key': apiKey,
+      'X-API-Secret': apiSecret,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
@@ -62,7 +69,7 @@ export async function POST(request: NextRequest) {
   const data = await res.json()
 
   if (!res.ok) {
-    console.error('Xaman API error:', JSON.stringify(data))
+    console.error('[vote] Xaman error', res.status, JSON.stringify(data), '— account:', account, 'vault:', vaultAddress)
     return Response.json({ error: data, status: res.status }, { status: res.status })
   }
 
