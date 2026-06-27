@@ -24,6 +24,8 @@ export interface ChapterData {
   epilogue_key?: string
   winning_choice?: string
   final_tally?: Record<string, number>
+  participation_image_key?: string
+  winner_image_key?: string
   // Populated server-side from S3, not stored in DB
   story_text?: string
   choice_intro_text?: string

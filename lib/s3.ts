@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, PutObjectCommand, type PutObjectCommandInput } from '@aws-sdk/client-s3'
 
 export const s3 = new S3Client({
   region: 'us-east-1',
@@ -29,3 +29,15 @@ export async function putStoryText(key: string, content: string): Promise<void> 
     ContentType: 'text/markdown; charset=utf-8',
   }))
 }
+
+export async function putImageFile(key: string, data: Uint8Array, contentType: string): Promise<void> {
+  const params: PutObjectCommandInput = {
+    Bucket: STORIES_BUCKET,
+    Key: key,
+    Body: data,
+    ContentType: contentType,
+    CacheControl: 'public, max-age=31536000, immutable',
+  }
+  await s3.send(new PutObjectCommand(params))
+}
+

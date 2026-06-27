@@ -213,11 +213,13 @@ function ImageSlot({
   choicePoint,
   type,
   uri,
+  imageKey,
   onRefresh,
 }: {
   choicePoint: string
   type: 'winner' | 'participation'
   uri?: string
+  imageKey?: string
   onRefresh: () => void
 }) {
   const key = `${choicePoint}:${type}`
@@ -269,33 +271,36 @@ function ImageSlot({
 
       {uri ? (
         <div className="space-y-1.5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={ipfsToGateway(uri)}
-            alt={label}
-            className="h-32 w-full rounded object-contain bg-zinc-100 dark:bg-zinc-800"
-            onError={e => {
-              const img = e.currentTarget
-              const cid = uri.replace('ipfs://', '')
-              const fallbacks = [
-                `https://teal-manual-junglefowl-646.mypinata.cloud/ipfs/${cid}`,
-                `https://ipfs.io/ipfs/${cid}`,
-                `https://cloudflare-ipfs.com/ipfs/${cid}`,
-              ]
-              const tried = parseInt(img.dataset.tried ?? '0')
-              if (tried < fallbacks.length) {
-                img.dataset.tried = String(tried + 1)
-                img.src = fallbacks[tried]
-              }
-            }}
-          />
+          <div className="aspect-[9/16] w-full overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageKey ? `/api/nft-image?key=${encodeURIComponent(imageKey)}` : ipfsToGateway(uri)}
+              alt={label}
+              className="h-full w-full object-cover"
+              onError={e => {
+                if (imageKey) return
+                const img = e.currentTarget
+                const cid = uri.replace('ipfs://', '')
+                const fallbacks = [
+                  `/api/admin/ipfs-image?cid=${encodeURIComponent(cid)}`,
+                  `https://teal-manual-junglefowl-646.mypinata.cloud/ipfs/${cid}`,
+                  `https://ipfs.io/ipfs/${cid}`,
+                ]
+                const tried = parseInt(img.dataset.tried ?? '0')
+                if (tried < fallbacks.length) {
+                  img.dataset.tried = String(tried + 1)
+                  img.src = fallbacks[tried]
+                }
+              }}
+            />
+          </div>
           <a href={ipfsToGateway(uri)} target="_blank" rel="noopener noreferrer"
             className="break-all font-mono text-[10px] text-zinc-400 hover:text-zinc-600 underline">
             {uri}
           </a>
         </div>
       ) : (
-        <div className="flex h-32 items-center justify-center rounded border-2 border-dashed border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="flex aspect-[9/16] w-full items-center justify-center rounded border-2 border-dashed border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
           <p className="text-xs text-zinc-400">No image</p>
         </div>
       )}
@@ -369,8 +374,8 @@ function LibrarySection() {
                   <p className="font-mono text-[10px] text-zinc-400">{ch.choice_point}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <ImageSlot choicePoint={ch.choice_point} type="winner" uri={ch.winner_nft_uri} onRefresh={load} />
-                  <ImageSlot choicePoint={ch.choice_point} type="participation" uri={ch.participation_nft_uri} onRefresh={load} />
+                  <ImageSlot choicePoint={ch.choice_point} type="winner" uri={ch.winner_nft_uri} imageKey={ch.winner_image_key} onRefresh={load} />
+                  <ImageSlot choicePoint={ch.choice_point} type="participation" uri={ch.participation_nft_uri} imageKey={ch.participation_image_key} onRefresh={load} />
                 </div>
               </div>
             ))}

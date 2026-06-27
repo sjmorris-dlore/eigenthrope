@@ -6,6 +6,7 @@ import ObserverProfile from './ObserverProfile'
 import ArtifactClaim from './ArtifactClaim'
 import Vote from './Vote'
 import WaveformDisplay from './WaveformDisplay'
+import ChapterArtifact from './ChapterArtifact'
 import Tally from './Tally'
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
             </div>
           )}
           <WaveformDisplay />
+          <ChapterArtifact />
         </aside>
 
       </div>

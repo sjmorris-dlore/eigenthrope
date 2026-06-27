@@ -1,5 +1,15 @@
 import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import { putImageFile, STORIES_BUCKET } from '@/lib/s3'
+
+function s3KeyForImage(choicePoint: string, type: string, ext: string) {
+  return `nft-images/${choicePoint.replace(/:/g, '/')}/${type}.${ext}`
+}
+
+function extFromMime(mime: string) {
+  const sub = mime.split('/')[1] ?? 'jpg'
+  return sub === 'jpeg' ? 'jpg' : sub
+}
 
 export async function POST(request: Request) {
   const form = await request.formData()
@@ -20,17 +30,26 @@ export async function POST(request: Request) {
     return Response.json({ error: 'PINATA_JWT not configured' }, { status: 500 })
   }
 
+  const fileBytes = new Uint8Array(await file.arrayBuffer())
+  const ext = extFromMime(file.type)
+  const s3Key = s3KeyForImage(choicePoint, type, ext)
+
   const pinataForm = new FormData()
-  pinataForm.append('file', file)
+  pinataForm.append('file', new Blob([fileBytes], { type: file.type }), file.name)
   pinataForm.append('pinataMetadata', JSON.stringify({
     name: `${choicePoint}-${type}-${Date.now()}`,
   }))
 
-  const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${jwt}` },
-    body: pinataForm,
-  })
+  const [pinataRes] = await Promise.all([
+    fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}` },
+      body: pinataForm,
+    }),
+    STORIES_BUCKET
+      ? putImageFile(s3Key, fileBytes, file.type)
+      : Promise.resolve(),
+  ])
 
   if (!pinataRes.ok) {
     const err = await pinataRes.text()
@@ -40,13 +59,15 @@ export async function POST(request: Request) {
   const { IpfsHash: cid } = await pinataRes.json() as { IpfsHash: string }
   const uri = `ipfs://${cid}`
 
-  const field = type === 'winner' ? 'winner_nft_uri' : 'participation_nft_uri'
+  const nftField = type === 'winner' ? 'winner_nft_uri' : 'participation_nft_uri'
+  const imgField = type === 'winner' ? 'winner_image_key' : 'participation_image_key'
+
   await dynamo.send(new UpdateCommand({
     TableName: 'eigenthrope_chapters',
     Key: { choice_point: choicePoint },
-    UpdateExpression: `SET ${field} = :uri`,
-    ExpressionAttributeValues: { ':uri': uri },
+    UpdateExpression: `SET ${nftField} = :uri, ${imgField} = :key`,
+    ExpressionAttributeValues: { ':uri': uri, ':key': s3Key },
   }))
 
-  return Response.json({ uri, cid, gateway_url: `https://gateway.pinata.cloud/ipfs/${cid}` })
+  return Response.json({ uri, cid, s3_key: s3Key })
 }
