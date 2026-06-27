@@ -113,6 +113,7 @@ async function getVotersByChoice(client, vaultAddress, choicePoint, resetVersion
 }
 
 function randomSubset(arr, pct) {
+  if (arr.length === 0) return []
   const count = Math.max(1, Math.floor(arr.length * pct))
   return [...arr].sort(() => Math.random() - 0.5).slice(0, count)
 }
@@ -155,8 +156,12 @@ const totalWeight = Object.values(byChoice).reduce((s, v) => s + v.totalWeight, 
 const p = winnerWeight / totalWeight
 const yieldPct = computeYield(p)
 
+const rawCount = Math.floor(winners.length * yieldPct)
+const selectedCount = Math.max(1, rawCount)
+const guaranteedFloor = rawCount < 1
+
 console.log(`\nWinning choice: ${winningChoice} (${Math.round(p * 100)}% consensus)`)
-console.log(`Quantum yield: ${Math.round(yieldPct * 100)}% of winners receive artifacts`)
+console.log(`Quantum yield: ${Math.round(yieldPct * 100)}% → ${selectedCount} of ${winners.length} winner(s)${guaranteedFloor ? ' (floor: at least 1 always minted)' : ''}`)
 
 const selected = randomSubset(winners, yieldPct)
 console.log(`Minting for ${selected.length} of ${winners.length} winners:\n`)
