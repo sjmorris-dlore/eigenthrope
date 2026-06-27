@@ -125,32 +125,45 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   const [account, setAccount] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(false)
   const xummRef = useRef<XummInstance | null>(null)
+  const [dbg, setDbg] = useState<string[]>(['—'])
+
+  const log = useCallback((msg: string) => {
+    const ts = new Date().toISOString().slice(11, 19)
+    setDbg(prev => [...prev.slice(-9), `${ts} ${msg}`])
+  }, [])
 
   // Always-fresh ref so event callbacks never capture a stale onAccountChange
   const onAccountChangeRef = useRef(onAccountChange)
   useEffect(() => { onAccountChangeRef.current = onAccountChange })
 
   const updateAccount = useCallback((value: string | null) => {
+    const short = value ? value.slice(0, 8) : 'null'
+    const cbType = typeof onAccountChangeRef.current
+    log(`updateAccount(${short}) cb=${cbType}`)
     setAccount(value)
     onAccountChangeRef.current?.(value)
-  }, [])
+    log(`onAccountChange called → ${short}`)
+  }, [log])
 
   // Extracted so it can be called both on mount and after disconnect
   const setupXumm = useCallback(async () => {
     const apiKey = process.env.NEXT_PUBLIC_XAMAN_API_KEY
-    if (!apiKey) return
+    if (!apiKey) { log('NO API KEY'); return }
+    log('setupXumm start')
 
     const { XummPkce } = await import('xumm-oauth2-pkce')
     const xumm = new XummPkce(apiKey as string) as unknown as XummInstance
     xummRef.current = xumm
+    log('xumm instance created')
 
     const handleSession = async () => {
-      // state() may lag slightly after the success event — retry a few times
+      log('event:success/retrieved fired')
       let acct: string | null = null
       for (let i = 0; i < 5 && !acct; i++) {
         if (i > 0) await new Promise(r => setTimeout(r, 400))
         const s = await xumm.state()
         acct = s?.me?.account ?? null
+        log(`event retry ${i}: acct=${acct ? acct.slice(0,8) : 'null'}`)
       }
       updateAccount(acct)
       setConnecting(false)
@@ -159,66 +172,84 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
     xumm.on('success', handleSession)
     xumm.on('retrieved', handleSession)
     xumm.on('loggedout', () => {
+      log('event:loggedout')
       updateAccount(null)
       setConnecting(false)
     })
     xumm.on('error', () => {
+      log('event:error')
       setConnecting(false)
     })
 
     // Handles returning from OAuth redirect and restored sessions
     const state = await xumm.state()
-    if (state?.me?.account) {
-      updateAccount(state.me.account)
+    const initAcct = state?.me?.account ?? null
+    log(`init state()=${initAcct ? initAcct.slice(0,8) : 'null'}`)
+    if (initAcct) {
+      updateAccount(initAcct)
     }
-  }, [updateAccount])
+  }, [updateAccount, log])
 
   useEffect(() => {
     setupXumm()
   }, [setupXumm])
 
   // Poll state() while connecting — fallback for when SDK events don't fire
-  // after reconnect (event system can be unreliable on same-page reuse)
   useEffect(() => {
     if (!connecting) return
+    log('poll: start')
+    let n = 0
     const interval = setInterval(async () => {
       if (!xummRef.current) return
+      n++
       const s = await xummRef.current.state()
       const acct = s?.me?.account ?? null
+      log(`poll#${n}: state=${acct ? acct.slice(0,8) : 'null'}`)
       if (acct) {
         clearInterval(interval)
         updateAccount(acct)
         setConnecting(false)
       }
     }, 1500)
-    return () => clearInterval(interval)
-  }, [connecting, updateAccount])
+    return () => { clearInterval(interval); log('poll: stop') }
+  }, [connecting, updateAccount, log])
 
   const connect = () => {
-    if (!xummRef.current) return
+    if (!xummRef.current) { log('connect: no xumm ref'); return }
+    log('connect() called')
     setConnecting(true)
     xummRef.current.authorize()
   }
 
   const disconnect = () => {
     if (!xummRef.current) return
+    log('disconnect() called')
     xummRef.current.logout()
     updateAccount(null)
     setupXumm()
   }
 
+  const DebugPanel = () => (
+    <pre className="w-full max-w-2xl rounded bg-zinc-900 p-3 text-[10px] leading-4 text-green-400 overflow-auto">
+      {dbg.map((l, i) => <div key={i}>{l}</div>)}
+    </pre>
+  )
+
   if (account) {
     const short = `${account.slice(0, 6)}…${account.slice(-4)}`
     return (
-      <div className="flex w-full items-center justify-center gap-3">
-        <p className="font-mono text-xs text-zinc-400">{short}</p>
-        <span className="text-zinc-300 dark:text-zinc-600">·</span>
-        <button
-          onClick={disconnect}
-          className="text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
-        >
-          Disconnect
-        </button>
+      <div className="flex w-full flex-col items-center gap-3">
+        <div className="flex items-center gap-3">
+          <p className="font-mono text-xs text-zinc-400">{short}</p>
+          <span className="text-zinc-300 dark:text-zinc-600">·</span>
+          <button
+            onClick={disconnect}
+            className="text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+          >
+            Disconnect
+          </button>
+        </div>
+        <DebugPanel />
       </div>
     )
   }
@@ -244,6 +275,7 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
       >
         {connecting ? 'Connecting…' : 'Connect Xaman Wallet'}
       </button>
+      <DebugPanel />
       <OnboardingInstructions />
     </div>
   )
