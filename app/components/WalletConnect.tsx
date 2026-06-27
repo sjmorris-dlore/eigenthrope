@@ -226,7 +226,10 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
     log('disconnect() called')
     xummRef.current.logout()
     updateAccount(null)
-    setupXumm()
+    // Do NOT call setupXumm() here — on mobile the next authorize() triggers a
+    // page redirect/reload, which re-runs setupXumm via useEffect on the fresh page.
+    // Creating a new XummPkce instance here stomps on the PKCE verifier in storage,
+    // causing the code exchange on the redirect-back to fail with event:error.
   }
 
   const DebugPanel = () => (
