@@ -5,7 +5,7 @@ function HowItWorks() {
   return (
     <details className="group w-full max-w-2xl rounded-xl border border-zinc-200 bg-white px-5 py-4 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-zinc-900 marker:hidden dark:text-zinc-50">
-        <span>How it works</span>
+        <span>Gameplay</span>
         <span className="text-xs uppercase tracking-[0.2em] text-zinc-400 group-open:hidden">Show</span>
         <span className="hidden text-xs uppercase tracking-[0.2em] text-zinc-400 group-open:inline">Hide</span>
       </summary>
