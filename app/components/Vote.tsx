@@ -261,7 +261,7 @@ export default function Vote({ account }: VoteProps) {
       {chapter.story_text && <CollapsibleStory text={chapter.story_text} />}
       <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
-          Your Observation
+          Collapse the Wave
         </p>
         {chapter.choice_intro_text && (
           <div className="mt-1">
