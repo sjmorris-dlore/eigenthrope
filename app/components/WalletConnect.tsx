@@ -141,13 +141,24 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
       xummRef.current = xumm
 
       const handleSession = async () => {
-        const state = await xumm.state()
-        updateAccount(state?.me?.account ?? null)
+        // state() may not reflect the new session immediately after success —
+        // retry a few times before giving up
+        let acct: string | null = null
+        for (let i = 0; i < 5 && !acct; i++) {
+          if (i > 0) await new Promise(r => setTimeout(r, 400))
+          const s = await xumm.state()
+          acct = s?.me?.account ?? null
+        }
+        updateAccount(acct)
         setConnecting(false)
       }
 
       xumm.on('success', handleSession)
       xumm.on('retrieved', handleSession)
+      xumm.on('loggedout', () => {
+        updateAccount(null)
+        setConnecting(false)
+      })
 
       xumm.on('error', () => {
         setConnecting(false)

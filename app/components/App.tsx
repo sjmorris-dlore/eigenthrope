@@ -19,8 +19,8 @@ export default function App() {
 
         {/* Main reading column */}
         <div className="flex min-w-0 flex-1 flex-col gap-6">
-          {account && <ArtifactClaim account={account} />}
-          {account && <Vote account={account} />}
+          {account && <ArtifactClaim key={account} account={account} />}
+          {account && <Vote key={account} account={account} />}
           <Tally />
         </div>
 
