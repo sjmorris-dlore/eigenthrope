@@ -1,4 +1,4 @@
-import { QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from './dynamo'
 import { getResetVersion } from './config'
 
@@ -19,8 +19,10 @@ function fromHex(hex: string) {
 async function countVotes(
   account: string,
   vaultAddress: string,
-  resetVersion: number
+  resetVersion: number,
+  activeChoicePoint?: string  // "universe:chapter:cp" — excluded until chapter closes
 ): Promise<number> {
+  const [activeUniverse, activeChapter, activeCp] = (activeChoicePoint ?? '').split(':')
   const res = await fetch(XRPL_RPC, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -51,9 +53,14 @@ async function countVotes(
       if (!Memo.MemoData) continue
       try {
         const vote = JSON.parse(fromHex(Memo.MemoData))
+        const isActiveChapter =
+          vote.universe === activeUniverse &&
+          vote.chapter === activeChapter &&
+          vote.choice_point === activeCp
         if (
           vote.universe && vote.chapter && vote.choice_point &&
           (vote.rv ?? 0) === resetVersion &&
+          !isActiveChapter &&
           sender === account &&
           !seenAccounts.has(`${sender}:${vote.universe}:${vote.chapter}:${vote.choice_point}`)
         ) {
@@ -112,9 +119,13 @@ export async function getResonanceBreakdown(
   account: string,
   vaultAddress: string
 ): Promise<ResonanceBreakdown> {
-  const resetVersion = await getResetVersion()
+  const [resetVersion, configItem] = await Promise.all([
+    getResetVersion(),
+    dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'active_choice_point' } })),
+  ])
+  const activeChoicePoint = configItem.Item?.value as string | undefined
   const [votes, { winners, participation }] = await Promise.all([
-    countVotes(account, vaultAddress, resetVersion),
+    countVotes(account, vaultAddress, resetVersion, activeChoicePoint),
     countArtifacts(account, vaultAddress, resetVersion),
   ])
   return {
