@@ -14,8 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Eigenstate",
+  title: "Eigenthrope",
   description: "A collaborative mystery across collapsing universes. Connect your Xaman wallet to join the Observer community on the XRP Ledger.",
+  openGraph: {
+    title: "Eigenthrope",
+    description: "A collaborative mystery across collapsing universes. Connect your Xaman wallet to join the Observer community on the XRP Ledger.",
+    siteName: "Eigenthrope",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Eigenthrope",
+    description: "A collaborative mystery across collapsing universes. Connect your Xaman wallet to join the Observer community on the XRP Ledger.",
+  },
 };
 
 export default function RootLayout({
