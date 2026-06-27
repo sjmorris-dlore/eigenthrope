@@ -649,6 +649,10 @@ export default function AdminPage() {
   const [timerMinutes, setTimerMinutes] = useState(5)
   const [settingTimer, setSettingTimer] = useState(false)
   const [timerStatus, setTimerStatus] = useState('')
+  const [mintingNFTs, setMintingNFTs] = useState(false)
+  const [mintStatus, setMintStatus] = useState('')
+  const [creatingOffers, setCreatingOffers] = useState(false)
+  const [offerStatus, setOfferStatus] = useState('')
 
   const [editingChoicePoint, setEditingChoicePoint] = useState<string | null>(null)
   const [editingChapterData, setEditingChapterData] = useState<ChapterData | null>(null)
@@ -811,6 +815,43 @@ export default function AdminPage() {
       else setAnnounceStatus(`Error: ${data.error}`)
     } catch { setAnnounceStatus('Error: Request failed.') }
     setAnnouncing(false)
+  }
+
+  async function mintNFTs() {
+    if (!chapter) return
+    if (chapter.status !== 'closed') { setMintStatus('Error: Chapter must be closed first.'); return }
+    if (!confirm(`Mint NFTs for "${chapter.chapter_label}"? This will invoke the Lambda and cannot be undone.`)) return
+    setMintingNFTs(true)
+    setMintStatus('')
+    try {
+      const res = await fetch('/api/admin/mint-nfts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choice_point: chapter.choice_point }),
+      })
+      const data = await res.json()
+      if (res.ok) setMintStatus('Minting started. Check Lambda logs for progress.')
+      else setMintStatus(`Error: ${data.error}`)
+    } catch { setMintStatus('Error: Request failed.') }
+    setMintingNFTs(false)
+  }
+
+  async function createOffers() {
+    if (!chapter) return
+    if (!confirm(`Create sell offers for minted NFTs in "${chapter.chapter_label}"?`)) return
+    setCreatingOffers(true)
+    setOfferStatus('')
+    try {
+      const res = await fetch('/api/admin/create-offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choice_point: chapter.choice_point }),
+      })
+      const data = await res.json()
+      if (res.ok) setOfferStatus('Offer creation started. Check Lambda logs for progress.')
+      else setOfferStatus(`Error: ${data.error}`)
+    } catch { setOfferStatus('Error: Request failed.') }
+    setCreatingOffers(false)
   }
 
   async function resetChapter() {
@@ -1159,6 +1200,31 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <ActionStatus message={timerStatus} />
+                </div>
+                <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+                  <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">NFT Distribution</p>
+                  <p className="mb-3 text-xs text-zinc-500">
+                    Chapter must be closed. Step 1 mints NFTs to the vault and records them.
+                    Step 2 creates sell offers to each winner — this is what triggers the claim UI.
+                    Check Lambda logs in AWS CloudWatch for progress.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={mintNFTs}
+                      disabled={mintingNFTs || !chapter || chapter.status !== 'closed'}
+                      className="rounded bg-violet-600 px-3 py-1.5 text-xs text-white hover:bg-violet-500 disabled:opacity-40 dark:bg-violet-800 dark:hover:bg-violet-700"
+                    >
+                      {mintingNFTs ? 'Starting…' : 'Step 1 — Mint NFTs'}
+                    </button>
+                    <button
+                      onClick={createOffers}
+                      disabled={creatingOffers || !chapter}
+                      className="rounded bg-violet-800 px-3 py-1.5 text-xs text-white hover:bg-violet-700 disabled:opacity-40 dark:bg-violet-950 dark:hover:bg-violet-900"
+                    >
+                      {creatingOffers ? 'Starting…' : 'Step 2 — Send Offers'}
+                    </button>
+                  </div>
+                  <ActionStatus message={mintStatus || offerStatus} />
                 </div>
                 <div>
                   <p className="mb-2 text-xs text-zinc-500">

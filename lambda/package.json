@@ -1,0 +1,31 @@
+{
+  "name": "eigenthrope-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Lambda functions for NFT minting. Deploy mint-nfts/ and create-offers/ as separate functions.",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1075.0",
+    "@aws-sdk/client-secrets-manager": "^3.1075.0",
+    "@aws-sdk/lib-dynamodb": "^3.1075.0",
+    "xrpl": "^5.0.0"
+  },
+  "notes": {
+    "setup": [
+      "npm install in this directory",
+      "Deploy mint-nfts/ as Lambda 'eigenthrope-mint-nfts' (handler: index.handler)",
+      "Deploy create-offers/ as Lambda 'eigenthrope-create-offers' (handler: index.handler)",
+      "Set env var VAULT_SECRET_NAME on both functions",
+      "Attach IAM role with: secretsmanager:GetSecretValue, dynamodb:PutItem/GetItem/Query/UpdateItem on eigenthrope_minting and eigenthrope_artifacts"
+    ],
+    "dynamodb_tables": {
+      "eigenthrope_minting": {
+        "pk": "nft_token_id (S)",
+        "gsi": "choice_point-index on choice_point (S)"
+      },
+      "eigenthrope_artifacts": {
+        "pk": "offer_id (S)",
+        "gsi": "winner_address-index on winner_address (S)"
+      }
+    }
+  }
+}
