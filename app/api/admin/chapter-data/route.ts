@@ -24,6 +24,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const body = await request.json() as {
     choice_point: string
+    chapter_label?: string
     choices?: Record<string, { label: string; description: string }>
     prompt?: string
     winner_nft_uri?: string
@@ -31,9 +32,9 @@ export async function PATCH(request: Request) {
     voting_closes_at?: string
   }
 
-  const { choice_point, choices, prompt, winner_nft_uri, participation_nft_uri, voting_closes_at } = body
+  const { choice_point, chapter_label, choices, prompt, winner_nft_uri, participation_nft_uri, voting_closes_at } = body
 
-  if (!choice_point || (!choices && prompt === undefined && winner_nft_uri === undefined && participation_nft_uri === undefined && voting_closes_at === undefined)) {
+  if (!choice_point || (!choices && chapter_label === undefined && prompt === undefined && winner_nft_uri === undefined && participation_nft_uri === undefined && voting_closes_at === undefined)) {
     return Response.json({ error: 'choice_point and at least one field required' }, { status: 400 })
   }
 
@@ -41,6 +42,10 @@ export async function PATCH(request: Request) {
   const names: Record<string, string> = {}
   const values: Record<string, unknown> = {}
 
+  if (chapter_label !== undefined) {
+    setParts.push('chapter_label = :cl')
+    values[':cl'] = chapter_label
+  }
   if (choices) {
     setParts.push('choices = :choices')
     values[':choices'] = choices

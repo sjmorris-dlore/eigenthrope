@@ -631,6 +631,9 @@ export default function AdminPage() {
   const [resetHours, setResetHours] = useState(24)
   const [resetStatus, setResetStatus] = useState('')
 
+  const [editingChapterLabel, setEditingChapterLabel] = useState('')
+  const [savingChapterLabel, setSavingChapterLabel] = useState(false)
+  const [chapterLabelStatus, setChapterLabelStatus] = useState('')
   const [editingPrompt, setEditingPrompt] = useState('')
   const [savingPrompt, setSavingPrompt] = useState(false)
   const [promptStatus, setPromptStatus] = useState('')
@@ -705,9 +708,11 @@ export default function AdminPage() {
     ]).then(([chData, content]) => {
       if (chData) {
         setEditingChapterData(chData)
+        setEditingChapterLabel(chData.chapter_label ?? '')
         setEditingPrompt(chData.prompt ?? '')
         setEditingChoices(chData.choices ?? {})
         setChoicesEditStatus('')
+        setChapterLabelStatus('')
         setPromptStatus('')
       }
       if (content) {
@@ -765,6 +770,29 @@ export default function AdminPage() {
       setStatus('Error: Upload failed.')
     }
     setUploading(false)
+  }
+
+  async function saveChapterLabel() {
+    if (!editingChoicePoint) return
+    setSavingChapterLabel(true)
+    setChapterLabelStatus('')
+    try {
+      const res = await fetch('/api/admin/chapter-data', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choice_point: editingChoicePoint, chapter_label: editingChapterLabel }),
+      })
+      if (res.ok) {
+        setChapterLabelStatus('Saved.')
+        setEditingChapterData(prev => prev ? { ...prev, chapter_label: editingChapterLabel } : prev)
+      } else {
+        const data = await res.json()
+        setChapterLabelStatus(`Error: ${data.error}`)
+      }
+    } catch {
+      setChapterLabelStatus('Error: Request failed.')
+    }
+    setSavingChapterLabel(false)
   }
 
   async function savePrompt() {
@@ -1089,6 +1117,23 @@ export default function AdminPage() {
                 <LibrarySection />
               ) : (
               <div className="space-y-6">
+                {editingChapterData && (
+                  <div>
+                    <label className="mb-1.5 block text-xs text-zinc-500">Chapter label</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={editingChapterLabel}
+                        onChange={e => setEditingChapterLabel(e.target.value)}
+                        placeholder="e.g. The Laboratory"
+                        className={`${inputClass} flex-1`}
+                      />
+                      <button onClick={saveChapterLabel} disabled={savingChapterLabel} className={btnClass}>
+                        {savingChapterLabel ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                    <ActionStatus message={chapterLabelStatus} />
+                  </div>
+                )}
                 <div>
                   <label className="mb-1.5 block text-xs text-zinc-500">
                     Pre-choice story{editingChapterData?.story_key ? ` — ${editingChapterData.story_key}` : ' — not uploaded'}
