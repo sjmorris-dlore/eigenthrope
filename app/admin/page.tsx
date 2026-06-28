@@ -449,6 +449,7 @@ function UniverseNav({
     })
     setActivating(null)
     onActivate()
+    loadUniverses()
   }
 
   return (
