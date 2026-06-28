@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Offer has expired' }, { status: 410 })
   }
 
-  const apiKey = process.env.XAMAN_API_KEY
+  const apiKey = process.env.NEXT_PUBLIC_XAMAN_API_KEY
   const apiSecret = process.env.XAMAN_API_SECRET
   if (!apiKey || !apiSecret) {
     return Response.json({ error: 'Xaman credentials not configured' }, { status: 500 })
