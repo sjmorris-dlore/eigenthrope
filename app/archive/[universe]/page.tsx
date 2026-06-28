@@ -37,29 +37,37 @@ interface UniverseRecord {
   completed_at?: string
 }
 
-const proseComponents: Components = {
+const storyComponents: Components = {
   h1: ({ children }) => (
-    <p className="mb-5 mt-14 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400 first:mt-0">
+    <p className="mb-4 mt-12 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400 first:mt-0">
       {children}
     </p>
   ),
   h2: ({ children }) => (
-    <p className="mb-5 mt-12 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+    <p className="mb-4 mt-10 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
       {children}
     </p>
   ),
   p: ({ children }) => (
-    <p className="mb-6 text-lg leading-8 text-zinc-800 last:mb-0 dark:text-zinc-200">
+    <p className="mb-5 text-base leading-7 text-zinc-800 last:mb-0 dark:text-zinc-200">
       {children}
     </p>
   ),
   strong: ({ children }) => (
-    <strong className="font-semibold text-zinc-900 dark:text-zinc-100">{children}</strong>
+    <strong className="font-bold text-zinc-900 dark:text-zinc-100">{children}</strong>
   ),
   em: ({ children }) => (
     <em className="italic text-zinc-600 dark:text-zinc-400">{children}</em>
   ),
-  hr: () => <hr className="my-12 border-zinc-200 dark:border-zinc-800" />,
+  hr: () => <hr className="my-10 border-zinc-200 dark:border-zinc-800" />,
+}
+
+function StoryCard({ text }: { text: string }) {
+  return (
+    <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-10 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:px-12">
+      <ReactMarkdown components={storyComponents}>{text}</ReactMarkdown>
+    </div>
+  )
 }
 
 function shortAddress(addr: string) {
@@ -218,11 +226,7 @@ export default async function UniverseArchivePage({
                     {ch.chapter_label}
                   </p>
 
-                  {ch.story_text && (
-                    <ReactMarkdown components={proseComponents}>
-                      {ch.story_text}
-                    </ReactMarkdown>
-                  )}
+                  {ch.story_text && <StoryCard text={ch.story_text} />}
 
                   {winningLabel && (
                     <div className="flex flex-col items-center gap-3 py-2">
@@ -234,17 +238,9 @@ export default async function UniverseArchivePage({
                     </div>
                   )}
 
-                  {ch.outcome_text && (
-                    <ReactMarkdown components={proseComponents}>
-                      {ch.outcome_text}
-                    </ReactMarkdown>
-                  )}
+                  {ch.outcome_text && <StoryCard text={ch.outcome_text} />}
 
-                  {ch.epilogue_text && (
-                    <ReactMarkdown components={proseComponents}>
-                      {ch.epilogue_text}
-                    </ReactMarkdown>
-                  )}
+                  {ch.epilogue_text && <StoryCard text={ch.epilogue_text} />}
 
                   {i < chapters.length - 1 && (
                     <div className="flex items-center gap-4">
