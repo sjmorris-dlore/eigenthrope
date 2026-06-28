@@ -671,8 +671,13 @@ export default function AdminPage() {
         const data = await chapterRes.json()
         setChapter(data)
         setLoadError('')
-        // Default editing context to active chapter on first load only
         setEditingChoicePoint(prev => prev ?? data.choice_point)
+        // Load current minting status on page open
+        const mintRes = await fetch(`/api/admin/mint-status?choice_point=${encodeURIComponent(data.choice_point)}`)
+        if (mintRes.ok) {
+          const s = await mintRes.json() as { total: number; minted: number; offered: number }
+          if (s.total > 0) setMintPollStatus(`${s.total} total — ${s.minted} minted, ${s.offered} offered`)
+        }
       } else {
         setLoadError('No active chapter found.')
       }
@@ -841,12 +846,19 @@ export default function AdminPage() {
     setMintPollStatus('Waiting for Lambda…')
     let prev = { total: 0, minted: 0, offered: 0 }
     let stableCount = 0
+    const deadline = Date.now() + 5 * 60 * 1000 // 5-minute hard stop
     const id = setInterval(async () => {
+      if (Date.now() > deadline) {
+        clearInterval(id)
+        setMintPollStatus(prev => prev === 'Waiting for Lambda…' ? 'Timed out — check Lambda logs.' : prev)
+        return
+      }
       try {
         const res = await fetch(`/api/admin/mint-status?choice_point=${encodeURIComponent(choicePoint)}`)
         if (!res.ok) return
         const s = await res.json() as { total: number; minted: number; offered: number }
         setMintPollStatus(`${s.total} total — ${s.minted} minted, ${s.offered} offered`)
+        // Only stop when total > 0 and counts have been stable for 3 polls
         if (s.total > 0 && s.total === prev.total && s.minted === prev.minted && s.offered === prev.offered) {
           stableCount++
           if (stableCount >= 3) clearInterval(id)

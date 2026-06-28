@@ -50,19 +50,23 @@ for (let i = 0; i < 8; i++) {
 const algorithms = ['ed25519', 'ecdsa-secp256k1']
 const byteOrders = ['BE', 'LE']
 let wallet = null
+let entropy = null
+let matchedAlgo = null
 
 for (const algo of algorithms) {
   for (const order of byteOrders) {
-    const entropy = Buffer.alloc(16)
+    const buf = Buffer.alloc(16)
     for (let i = 0; i < 8; i++) {
-      if (order === 'BE') entropy.writeUInt16BE(values[i], i * 2)
-      else               entropy.writeUInt16LE(values[i], i * 2)
+      if (order === 'BE') buf.writeUInt16BE(values[i], i * 2)
+      else               buf.writeUInt16LE(values[i], i * 2)
     }
     try {
-      const w = Wallet.fromEntropy(entropy, { algorithm: algo })
+      const w = Wallet.fromEntropy(buf, { algorithm: algo })
       console.log(`  [${algo} ${order}] → ${w.address}`)
       if (w.address === vaultAddress) {
         wallet = w
+        entropy = buf
+        matchedAlgo = algo
         console.log(`\n✓ Match found (${algo}, ${order} byte order)`)
       }
     } catch {}
@@ -78,11 +82,12 @@ if (!wallet) {
 }
 
 console.log('✓ Address verified.')
-console.log(`Family seed: ${wallet.seed}`)
 
 // ── Update Secrets Manager via AWS CLI ───────────────────────────────────────
+// Store raw entropy + algorithm so Lambda can use Wallet.fromEntropy() directly.
+// Wallet.fromSeed(wallet.seed) uses a different derivation and produces a different address.
 try {
-  const secret = JSON.stringify({ seed: wallet.seed })
+  const secret = JSON.stringify({ entropy: entropy.toString('hex'), algorithm: matchedAlgo })
   execSync(
     `aws secretsmanager update-secret --region us-east-1 --secret-id eigenthrope/vault --secret-string "${secret.replace(/"/g, '\\"')}"`,
     { env: { ...process.env, AWS_ACCESS_KEY_ID: awsKey, AWS_SECRET_ACCESS_KEY: awsSecret }, stdio: 'pipe' }

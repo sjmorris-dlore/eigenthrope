@@ -41,6 +41,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="icon" type="image/png" href="/favicon-96x96.png?v=20260628" sizes="96x96" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260628" />
+        <link rel="shortcut icon" href="/favicon.ico?v=20260628" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260628" />
+        <link rel="manifest" href="/site.webmanifest?v=20260628" />
         {/* Runs before React hydrates — prevents flash of wrong theme */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
