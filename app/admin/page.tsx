@@ -649,6 +649,8 @@ export default function AdminPage() {
   const [timerMinutes, setTimerMinutes] = useState(5)
   const [settingTimer, setSettingTimer] = useState(false)
   const [timerStatus, setTimerStatus] = useState('')
+  const [closingChapter, setClosingChapter] = useState(false)
+  const [closeStatus, setCloseStatus] = useState('')
   const [mintingNFTs, setMintingNFTs] = useState(false)
   const [mintStatus, setMintStatus] = useState('')
   const [creatingOffers, setCreatingOffers] = useState(false)
@@ -815,6 +817,23 @@ export default function AdminPage() {
       else setAnnounceStatus(`Error: ${data.error}`)
     } catch { setAnnounceStatus('Error: Request failed.') }
     setAnnouncing(false)
+  }
+
+  async function closeChapter() {
+    setClosingChapter(true)
+    setCloseStatus('')
+    try {
+      const res = await fetch('/api/admin/close-chapter', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        if (data.skipped) setCloseStatus(`Skipped: ${data.skipped}`)
+        else setCloseStatus(`Closed. Winner: ${data.winning_choice ?? 'none'} (yield ${((data.yield_pct ?? 0) * 100).toFixed(0)}%)`)
+        await loadData()
+      } else {
+        setCloseStatus(`Error: ${data.error}`)
+      }
+    } catch { setCloseStatus('Error: Request failed.') }
+    setClosingChapter(false)
   }
 
   async function mintNFTs() {
@@ -1200,6 +1219,20 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <ActionStatus message={timerStatus} />
+                </div>
+                <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+                  <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">Close Chapter</p>
+                  <p className="mb-3 text-xs text-zinc-500">
+                    Tallies on-chain votes, sets the winner, and marks the chapter closed. Required before minting.
+                  </p>
+                  <button
+                    onClick={closeChapter}
+                    disabled={closingChapter || !chapter || chapter.status === 'closed'}
+                    className="rounded bg-rose-700 px-3 py-1.5 text-xs text-white hover:bg-rose-600 disabled:opacity-40 dark:bg-rose-900 dark:hover:bg-rose-800"
+                  >
+                    {closingChapter ? 'Closing…' : chapter?.status === 'closed' ? 'Already Closed' : 'Close Chapter Now'}
+                  </button>
+                  <ActionStatus message={closeStatus} />
                 </div>
                 <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
                   <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">NFT Distribution</p>

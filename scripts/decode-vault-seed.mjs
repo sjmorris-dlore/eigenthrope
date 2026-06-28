@@ -9,105 +9,87 @@
  *   3. Remove EIGENTHROPE_VAULT_NUMBERS from .env.local
  */
 
-import { readFileSync } from 'fs'
+import { execSync } from 'child_process'
 import { Wallet } from '../node_modules/xrpl/dist/npm/index.js'
-import { SecretsManagerClient, UpdateSecretCommand } from '../node_modules/@aws-sdk/client-secrets-manager/dist-cjs/index.js'
 
-// ── Parse .env.local ──────────────────────────────────────────────────────────
-const env = {}
-try {
-  const lines = readFileSync('.env.local', 'utf8').split('\n')
-  for (const line of lines) {
-    const m = line.match(/^([^=]+)=(.*)$/)
-    if (m) env[m[1].trim()] = m[2].trim()
-  }
-} catch {
-  console.error('Could not read .env.local')
-  process.exit(1)
-}
-
-const numbersRaw = env['EIGENTHROPE_VAULT_NUMBERS']
-const vaultAddress = env['EIGENTHROPE_VAULT_ADDRESS']
-const awsKey = env['AWS_ACCESS_KEY_ID']
-const awsSecret = env['AWS_SECRET_ACCESS_KEY']
+// Run with: node --env-file=.env.local scripts/decode-vault-seed.mjs
+const numbersRaw = process.env.EIGENTHROPE_VAULT_NUMBERS
+const vaultAddress = process.env.EIGENTHROPE_VAULT_ADDRESS
+const awsKey = process.env.AWS_ACCESS_KEY_ID
+const awsSecret = process.env.AWS_SECRET_ACCESS_KEY
 
 if (!numbersRaw) {
-  console.error('EIGENTHROPE_VAULT_NUMBERS not set in .env.local')
-  console.error('Format: 6-digit groups separated by spaces, e.g.: 012345 678901 ...')
+  console.error('EIGENTHROPE_VAULT_NUMBERS not set.')
+  console.error('Run with: node --env-file=.env.local scripts/decode-vault-seed.mjs')
   process.exit(1)
 }
 
 // ── Decode Secret Numbers → 16-byte entropy ───────────────────────────────────
-// Algorithm: each of 8 rows is a 6-digit string where:
-//   - Digits 0–4 are the data value (0–65535, big-endian 2 bytes)
-//   - Digit 5 is checksum: (value * (position * 2 + 1)) % 9
 const rows = numbersRaw.trim().split(/\s+/)
 if (rows.length !== 8) {
   console.error(`Expected 8 groups of 6 digits, got ${rows.length}`)
   process.exit(1)
 }
 
-const entropy = Buffer.alloc(16)
+const values = []
 for (let i = 0; i < 8; i++) {
   const row = rows[i].replace(/\D/g, '')
   if (row.length !== 6) {
     console.error(`Row ${i + 1} must be exactly 6 digits, got: "${rows[i]}"`)
     process.exit(1)
   }
-
   const value = parseInt(row.slice(0, 5), 10)
-  const checkDigit = parseInt(row[5], 10)
-  const expectedCheck = (value * (i * 2 + 1)) % 9
-
-  if (checkDigit !== expectedCheck) {
-    console.error(`Row ${i + 1} checksum mismatch: digit is ${checkDigit}, expected ${expectedCheck}`)
-    console.error('Double-check the numbers — a transcription error may have occurred.')
-    process.exit(1)
-  }
-
   if (value > 65535) {
-    console.error(`Row ${i + 1} data value ${value} exceeds 65535 (max for 2 bytes)`)
+    console.error(`Row ${i + 1} data value ${value} exceeds 65535`)
     process.exit(1)
   }
-
-  entropy.writeUInt16BE(value, i * 2)
+  values.push(value)
 }
 
-// ── Derive wallet and verify address ─────────────────────────────────────────
-let wallet
-try {
-  wallet = Wallet.fromEntropy(entropy)
-} catch (e) {
-  console.error('Failed to derive wallet from entropy:', e.message)
-  process.exit(1)
+// Try all combinations of byte order × key algorithm to find the match
+const algorithms = ['ed25519', 'ecdsa-secp256k1']
+const byteOrders = ['BE', 'LE']
+let wallet = null
+
+for (const algo of algorithms) {
+  for (const order of byteOrders) {
+    const entropy = Buffer.alloc(16)
+    for (let i = 0; i < 8; i++) {
+      if (order === 'BE') entropy.writeUInt16BE(values[i], i * 2)
+      else               entropy.writeUInt16LE(values[i], i * 2)
+    }
+    try {
+      const w = Wallet.fromEntropy(entropy, { algorithm: algo })
+      console.log(`  [${algo} ${order}] → ${w.address}`)
+      if (w.address === vaultAddress) {
+        wallet = w
+        console.log(`\n✓ Match found (${algo}, ${order} byte order)`)
+      }
+    } catch {}
+  }
 }
 
-console.log(`Derived address: ${wallet.address}`)
-console.log(`Expected address: ${vaultAddress}`)
+console.log(`\nExpected: ${vaultAddress}`)
 
-if (wallet.address !== vaultAddress) {
-  console.error('\n❌ Address mismatch — the numbers do not match the vault wallet.')
-  console.error('Try checking for transposed digits or wrong row order.')
+if (!wallet) {
+  console.error('\n❌ No combination matched the vault address.')
+  console.error('The secret numbers may be entered in the wrong order, or the algorithm differs.')
   process.exit(1)
 }
 
 console.log('✓ Address verified.')
 console.log(`Family seed: ${wallet.seed}`)
 
-// ── Update Secrets Manager ────────────────────────────────────────────────────
-const sm = new SecretsManagerClient({
-  region: 'us-east-1',
-  credentials: { accessKeyId: awsKey, secretAccessKey: awsSecret },
-})
-
+// ── Update Secrets Manager via AWS CLI ───────────────────────────────────────
 try {
-  await sm.send(new UpdateSecretCommand({
-    SecretId: 'eigenthrope/vault',
-    SecretString: JSON.stringify({ seed: wallet.seed }),
-  }))
+  const secret = JSON.stringify({ seed: wallet.seed })
+  execSync(
+    `aws secretsmanager update-secret --region us-east-1 --secret-id eigenthrope/vault --secret-string "${secret.replace(/"/g, '\\"')}"`,
+    { env: { ...process.env, AWS_ACCESS_KEY_ID: awsKey, AWS_SECRET_ACCESS_KEY: awsSecret }, stdio: 'pipe' }
+  )
   console.log('✓ Secrets Manager updated with correct seed.')
 } catch (e) {
-  console.error('Failed to update Secrets Manager:', e.message)
+  console.error('Failed to update Secrets Manager:', e.stderr?.toString() ?? e.message)
   process.exit(1)
 }
 
