@@ -22,6 +22,24 @@ export async function POST(request: Request) {
       TableName: 'eigenthrope_config',
       Item: { key: 'active_choice_point', value: choice_point },
     })),
+
+    // Reopen the chapter and clear any stale close state from a prior round
+    dynamo.send(new UpdateCommand({
+      TableName: 'eigenthrope_chapters',
+      Key: { choice_point },
+      UpdateExpression: 'SET #s = :open REMOVE winning_choice, final_tally',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: { ':open': 'open' },
+    })),
+
+    // Ensure the universe is marked active
+    dynamo.send(new UpdateCommand({
+      TableName: 'eigenthrope_universes',
+      Key: { universe_id: newUniverseId },
+      UpdateExpression: 'SET #s = :active REMOVE completed_at',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: { ':active': 'active' },
+    })),
   ]
 
   // If switching to a different universe, mark the old one as completed
