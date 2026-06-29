@@ -6,7 +6,7 @@ export async function POST() {
   const currentRv = await getResetVersion()
   const newRv = currentRv + 1
 
-  const [tallies, chapters, universes] = await Promise.all([
+  const [tallies, chapters, universes, minting, artifacts] = await Promise.all([
     dynamo.send(new ScanCommand({
       TableName: 'eigenthrope_tallies',
       ProjectionExpression: 'choice_point',
@@ -18,6 +18,14 @@ export async function POST() {
     dynamo.send(new ScanCommand({
       TableName: 'eigenthrope_universes',
       ProjectionExpression: 'universe_id',
+    })),
+    dynamo.send(new ScanCommand({
+      TableName: 'eigenthrope_minting',
+      ProjectionExpression: 'nft_token_id',
+    })),
+    dynamo.send(new ScanCommand({
+      TableName: 'eigenthrope_artifacts',
+      ProjectionExpression: 'offer_id',
     })),
   ])
 
@@ -37,6 +45,22 @@ export async function POST() {
       dynamo.send(new DeleteCommand({
         TableName: 'eigenthrope_tallies',
         Key: { choice_point: item.choice_point },
+      }))
+    ),
+
+    // Delete all minting records so idempotency keys don't block re-mints
+    ...(minting.Items ?? []).map(item =>
+      dynamo.send(new DeleteCommand({
+        TableName: 'eigenthrope_minting',
+        Key: { nft_token_id: item.nft_token_id },
+      }))
+    ),
+
+    // Delete all artifact offer records
+    ...(artifacts.Items ?? []).map(item =>
+      dynamo.send(new DeleteCommand({
+        TableName: 'eigenthrope_artifacts',
+        Key: { offer_id: item.offer_id },
       }))
     ),
 
