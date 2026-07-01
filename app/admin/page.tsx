@@ -660,6 +660,7 @@ export default function AdminPage() {
   const [creatingOffers, setCreatingOffers] = useState(false)
   const [offerStatus, setOfferStatus] = useState('')
   const [mintPollStatus, setMintPollStatus] = useState('')
+  const [expectedMints, setExpectedMints] = useState<{ total: number; voters: number; winner_tier: number } | null>(null)
 
   const [editingChoicePoint, setEditingChoicePoint] = useState<string | null>(null)
   const [editingChapterData, setEditingChapterData] = useState<ChapterData | null>(null)
@@ -677,10 +678,18 @@ export default function AdminPage() {
         setLoadError('')
         setEditingChoicePoint(prev => prev ?? data.choice_point)
         // Load current minting status on page open
-        const mintRes = await fetch(`/api/admin/mint-status?choice_point=${encodeURIComponent(data.choice_point)}`)
+        const cp = encodeURIComponent(data.choice_point)
+        const [mintRes, expectedRes] = await Promise.all([
+          fetch(`/api/admin/mint-status?choice_point=${cp}`),
+          data.status === 'closed' ? fetch(`/api/admin/mint-expected?choice_point=${cp}`) : Promise.resolve(null),
+        ])
         if (mintRes.ok) {
           const s = await mintRes.json() as { total: number; minted: number; offered: number }
           if (s.total > 0) setMintPollStatus(`${s.total} total — ${s.minted} awaiting offer, ${s.offered} offered`)
+        }
+        if (expectedRes?.ok) {
+          const e = await expectedRes.json() as { expected_mints: number; unique_voters: number; winner_tier: number }
+          setExpectedMints({ total: e.expected_mints, voters: e.unique_voters, winner_tier: e.winner_tier })
         }
       } else {
         setLoadError('No active chapter found.')
@@ -871,11 +880,17 @@ export default function AdminPage() {
     setClosingChapter(false)
   }
 
-  function startMintPolling(choicePoint: string) {
+  function startMintPolling(choicePoint: string, expected?: number) {
     setMintPollStatus('Waiting for Lambda…')
     let prev = { total: 0, minted: 0, offered: 0 }
     let stableCount = 0
     const deadline = Date.now() + 5 * 60 * 1000 // 5-minute hard stop
+
+    function formatStatus(s: { total: number; minted: number; offered: number }) {
+      const ofStr = expected != null ? `${s.total} of ${expected}` : `${s.total} total`
+      return `${ofStr} minted — ${s.minted} awaiting offer, ${s.offered} offered`
+    }
+
     const id = setInterval(async () => {
       if (Date.now() > deadline) {
         clearInterval(id)
@@ -887,10 +902,9 @@ export default function AdminPage() {
         if (!res.ok) return
         const s = await res.json() as { total: number; minted: number; offered: number }
         if (s.total > 0) {
-          setMintPollStatus(`${s.total} total — ${s.minted} awaiting offer, ${s.offered} offered`)
+          setMintPollStatus(formatStatus(s))
         }
-        // Stop when counts have been stable for 20 polls (~80s) — Lambda mints sequentially,
-        // each XRPL transaction takes 4-6s, so a small voter set needs up to ~30s to finish.
+        // Lambda mints sequentially; each XRPL tx takes 4-6s. Stop only after 20 stable polls (~80s).
         if (s.total > 0 && s.total === prev.total && s.minted === prev.minted && s.offered === prev.offered) {
           stableCount++
           if (stableCount >= 20) clearInterval(id)
@@ -920,7 +934,7 @@ export default function AdminPage() {
       const data = await res.json()
       if (res.ok) {
         setMintStatus('Step 1 started.')
-        startMintPolling(chapter.choice_point)
+        startMintPolling(chapter.choice_point, expectedMints?.total)
       } else setMintStatus(`Error: ${data.error}`)
     } catch { setMintStatus('Error: Request failed.') }
     setMintingNFTs(false)
@@ -942,7 +956,7 @@ export default function AdminPage() {
       const data = await res.json()
       if (res.ok) {
         setOfferStatus('Step 2 started.')
-        startMintPolling(chapter.choice_point)
+        startMintPolling(chapter.choice_point, expectedMints?.total)
       } else setOfferStatus(`Error: ${data.error}`)
     } catch { setOfferStatus('Error: Request failed.') }
     setCreatingOffers(false)
@@ -1350,8 +1364,14 @@ export default function AdminPage() {
                     </button>
                   </div>
                   <ActionStatus message={mintStatus || offerStatus} />
+                  {expectedMints && (
+                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      Expecting {expectedMints.total} mints: {expectedMints.voters} participation
+                      {expectedMints.winner_tier > 0 ? ` + ${expectedMints.winner_tier} winner` : ''}
+                    </p>
+                  )}
                   {mintPollStatus && (
-                    <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{mintPollStatus}</p>
+                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{mintPollStatus}</p>
                   )}
                 </div>
                 <div>
