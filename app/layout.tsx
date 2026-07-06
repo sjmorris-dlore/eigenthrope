@@ -15,17 +15,17 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Eigenthrope",
-  description: "A collaborative mystery across collapsing universes. Connect your Xaman wallet to join the Observer community on the XRP Ledger.",
+  description: "A collaborative story game on the XRP Ledger. Cast your vote, earn Resonance, and shape a mystery that deepens across universes.",
   openGraph: {
     title: "Eigenthrope",
-    description: "A collaborative mystery across collapsing universes. Connect your Xaman wallet to join the Observer community on the XRP Ledger.",
+    description: "A collaborative story game on the XRP Ledger. Cast your vote, earn Resonance, and shape a mystery that deepens across universes.",
     siteName: "Eigenthrope",
     type: "website",
   },
   twitter: {
     card: "summary",
     title: "Eigenthrope",
-    description: "A collaborative mystery across collapsing universes. Connect your Xaman wallet to join the Observer community on the XRP Ledger.",
+    description: "A collaborative story game on the XRP Ledger. Cast your vote, earn Resonance, and shape a mystery that deepens across universes.",
   },
 };
 
