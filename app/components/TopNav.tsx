@@ -18,12 +18,9 @@ function AdminNav() {
   ]
   return (
     <>
-      <Link
-        href="/admin"
-        className="text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-      >
+      <span className="text-xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
         Admin
-      </Link>
+      </span>
       {links.map(({ href, label }) => (
         <Link
           key={href}
