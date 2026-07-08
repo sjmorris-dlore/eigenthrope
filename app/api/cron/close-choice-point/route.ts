@@ -1,8 +1,9 @@
-import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, UpdateCommand, ScanCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion } from '@/lib/config'
 import { postDiscord, chapterClosedEmbed } from '@/lib/discord'
 import type { ChapterData } from '@/app/api/chapter/route'
+import type { Clue } from '@/lib/clues'
 
 const XRPL_RPC = 'https://xrplcluster.com/'
 const MIN_YIELD = 0.05
@@ -131,6 +132,34 @@ export async function GET(request: Request) {
       ':yp': yieldPct,
     },
   }))
+
+  // Auto-discover clues triggered by this branch outcome
+  if (winningChoice) {
+    const cluesResult = await dynamo.send(new ScanCommand({ TableName: 'eigenthrope_clues' }))
+    const now = new Date().toISOString()
+    const [universe] = choicePoint.split(':')
+    await Promise.all(
+      ((cluesResult.Items ?? []) as Clue[])
+        .filter(c =>
+          !c.discovered &&
+          (c.reveal_triggers ?? []).some(
+            t => t.choice_point === choicePoint && t.winning_choice === winningChoice
+          )
+        )
+        .map(c =>
+          dynamo.send(new PutCommand({
+            TableName: 'eigenthrope_clues',
+            Item: {
+              ...c,
+              discovered: true,
+              discovered_at: now,
+              discovered_in_universe: universe,
+              discovered_in_branch: choicePoint,
+            },
+          }))
+        )
+    )
+  }
 
   const winningLabel = winningChoice ? chapter.choices?.[winningChoice]?.label ?? null : null
   await postDiscord(chapterClosedEmbed(

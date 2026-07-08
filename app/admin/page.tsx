@@ -1405,6 +1405,16 @@ export default function AdminPage() {
               </div>
             </Section>
 
+            <Section title="Tools">
+              <a
+                href="/admin/clues"
+                className="inline-flex items-center gap-2 rounded border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                <span>Clue Library</span>
+                <span className="text-zinc-400">→</span>
+              </a>
+            </Section>
+
           </div>
         </div>
       </div>
