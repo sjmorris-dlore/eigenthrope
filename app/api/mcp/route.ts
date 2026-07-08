@@ -133,6 +133,106 @@ function buildServer() {
   // ── Chapters & Story ────────────────────────────────────────────────────────
 
   server.tool(
+    'create_chapter',
+    'Create a new chapter in a universe with voting choices. Chapter number is assigned automatically.',
+    {
+      universe_id: z.string().describe('e.g. U001'),
+      chapter_label: z.string().describe('Display title, e.g. "Chapter 1 · The Star of Alexandria"'),
+      prompt: z.string().describe('Internal admin prompt / narrative setup notes'),
+      choices: z.record(
+        z.string().describe('Choice ID: A, B, C, or D'),
+        z.object({
+          label: z.string(),
+          description: z.string(),
+        })
+      ).describe('At least 2 choices keyed by ID (A, B, C, D)'),
+      voting_hours: z.number().default(24).describe('How long voting stays open in hours'),
+    },
+    async ({ universe_id, chapter_label, prompt, choices, voting_hours }) => {
+      if (Object.keys(choices).length < 2) {
+        return { content: [{ type: 'text', text: 'At least 2 choices required.' }] }
+      }
+
+      const existing = await dynamo.send(new ScanCommand({
+        TableName: CHAPTERS_TABLE,
+        FilterExpression: '#u = :uid',
+        ExpressionAttributeNames: { '#u': 'universe' },
+        ExpressionAttributeValues: { ':uid': universe_id.toUpperCase() },
+        ProjectionExpression: 'chapter',
+      }))
+
+      const maxNum = (existing.Items ?? []).reduce((max, c) => {
+        const n = parseInt((c['chapter'] as string).replace('C', '')) || 0
+        return Math.max(max, n)
+      }, 0)
+
+      const chapter = `C${String(maxNum + 1).padStart(2, '0')}`
+      const choice_point = `${universe_id.toUpperCase()}:${chapter}:CP1`
+      const deadline = new Date(Date.now() + voting_hours * 60 * 60 * 1000).toISOString()
+
+      await dynamo.send(new PutCommand({
+        TableName: CHAPTERS_TABLE,
+        Item: {
+          choice_point,
+          universe: universe_id.toUpperCase(),
+          chapter,
+          chapter_label: chapter_label.trim(),
+          status: 'open',
+          prompt: prompt.trim(),
+          choices,
+          voting_opens_at: new Date().toISOString(),
+          voting_closes_at: deadline,
+        },
+      }))
+
+      return {
+        content: [{ type: 'text', text: `Created chapter ${choice_point} ("${chapter_label}") with ${Object.keys(choices).length} choices.` }],
+      }
+    }
+  )
+
+  server.tool(
+    'update_chapter_metadata',
+    'Update a chapter\'s label, prompt, choices, or voting deadline. Only provided fields are changed.',
+    {
+      choice_point: z.string().describe('e.g. U001:C01:CP1'),
+      chapter_label: z.string().optional(),
+      prompt: z.string().optional(),
+      choices: z.record(
+        z.string(),
+        z.object({ label: z.string(), description: z.string() })
+      ).optional().describe('Replaces the entire choices map if provided'),
+      voting_closes_at: z.string().optional().describe('ISO 8601 datetime'),
+    },
+    async ({ choice_point, chapter_label, prompt, choices, voting_closes_at }) => {
+      const setParts: string[] = []
+      const names: Record<string, string> = {}
+      const values: Record<string, unknown> = {}
+
+      if (chapter_label != null) { setParts.push('chapter_label = :cl'); values[':cl'] = chapter_label }
+      if (prompt != null) { setParts.push('#p = :prompt'); names['#p'] = 'prompt'; values[':prompt'] = prompt }
+      if (choices != null) { setParts.push('choices = :choices'); values[':choices'] = choices }
+      if (voting_closes_at != null) { setParts.push('voting_closes_at = :vca'); values[':vca'] = voting_closes_at }
+
+      if (setParts.length === 0) {
+        return { content: [{ type: 'text', text: 'No fields provided to update.' }] }
+      }
+
+      await dynamo.send(new UpdateCommand({
+        TableName: CHAPTERS_TABLE,
+        Key: { choice_point },
+        UpdateExpression: `SET ${setParts.join(', ')}`,
+        ...(Object.keys(names).length ? { ExpressionAttributeNames: names } : {}),
+        ExpressionAttributeValues: values,
+      }))
+
+      return { content: [{ type: 'text', text: `Updated chapter ${choice_point}.` }] }
+    }
+  )
+
+
+
+  server.tool(
     'list_chapters',
     'List all chapters across all universes with their status and metadata.',
     { universe_id: z.string().optional().describe('Filter to a specific universe, e.g. U001') },
