@@ -57,14 +57,34 @@ function StoryText({ text }: { text: string }) {
   )
 }
 
-function PagedStory({ text, defaultCollapsed = false }: { text: string; defaultCollapsed?: boolean }) {
+function PagedStory({
+  text,
+  defaultCollapsed = false,
+  onReadyChange,
+}: {
+  text: string
+  defaultCollapsed?: boolean
+  onReadyChange?: (ready: boolean) => void
+}) {
   const pages = useMemo(() => splitPages(text), [text])
   const [page, setPage] = useState(0)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const topRef = useRef<HTMLDivElement>(null)
   const current = pages[page]
 
+  const isReady = collapsed || page === pages.length - 1
+  useEffect(() => { onReadyChange?.(isReady) }, [isReady, onReadyChange])
+
+  function changePage(next: number) {
+    setPage(next)
+    // defer until after render so the new content is in place before scrolling
+    setTimeout(() => {
+      topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
   return (
-    <div className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div ref={topRef} className="w-full scroll-mt-16 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between px-8 pt-6 sm:px-12">
         <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">Story</span>
         <button
@@ -85,7 +105,7 @@ function PagedStory({ text, defaultCollapsed = false }: { text: string; defaultC
           {pages.length > 1 && (
             <div className="mt-10 flex items-center justify-between">
               <button
-                onClick={() => setPage(p => p - 1)}
+                onClick={() => changePage(page - 1)}
                 disabled={page === 0}
                 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-600 disabled:invisible dark:hover:text-zinc-300"
               >
@@ -95,7 +115,7 @@ function PagedStory({ text, defaultCollapsed = false }: { text: string; defaultC
                 {page + 1} / {pages.length}
               </span>
               <button
-                onClick={() => setPage(p => p + 1)}
+                onClick={() => changePage(page + 1)}
                 disabled={page === pages.length - 1}
                 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-600 disabled:invisible dark:hover:text-zinc-300"
               >
@@ -118,6 +138,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
   const [voted, setVoted] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [myVote, setMyVote] = useState<{ choice: string; label: string | null } | null>(null)
+  const [votingReady, setVotingReady] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const signRef = useRef<HTMLDivElement>(null)
 
@@ -153,6 +174,14 @@ export default function Vote({ account, onVoted }: VoteProps) {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
   }, [loadChapter, fetchMyVote])
+
+  // Show voting once the reader is on the last story page (or there's no story / single page)
+  useEffect(() => {
+    if (!chapter) return
+    if (!chapter.story_text) { setVotingReady(true); return }
+    const pages = splitPages(chapter.story_text)
+    setVotingReady(pages.length <= 1)
+  }, [chapter])
 
   const castVote = async (choice: string) => {
     if (!chapter) return
@@ -304,8 +333,10 @@ export default function Vote({ account, onVoted }: VoteProps) {
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
         {chapter.chapter_label}
       </p>
-      {chapter.story_text && <PagedStory text={chapter.story_text} />}
-      {account ? (
+      {chapter.story_text && (
+        <PagedStory text={chapter.story_text} onReadyChange={setVotingReady} />
+      )}
+      {votingReady && account ? (
         <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
             Collapse the Wave
@@ -345,13 +376,13 @@ export default function Vote({ account, onVoted }: VoteProps) {
             ))}
           </div>
         </div>
-      ) : (
+      ) : votingReady ? (
         <div className="w-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-8 py-6 text-center dark:border-zinc-700 dark:bg-zinc-900">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Connect your Xaman wallet above to cast your vote and collapse the wave.
           </p>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
