@@ -183,10 +183,10 @@ function buildServer() {
         ProjectionExpression: 'chapter',
       }))
       const maxNum = (existing.Items ?? []).reduce((max, c) => {
-        const n = parseInt((c['chapter'] as string).replace('C', '')) || 0
+        const n = parseInt((c['chapter'] as string).replace(/^[CE]/, '')) || 0
         return Math.max(max, n)
       }, 0)
-      const chapter = `C${String(maxNum + 1).padStart(2, '0')}`
+      const chapter = `E${String(maxNum + 1).padStart(2, '0')}`
       const choice_point = `${universe_id.toUpperCase()}:${chapter}:CP1`
       const deadline = new Date(Date.now() + voting_hours * 60 * 60 * 1000).toISOString()
       await dynamo.send(new PutCommand({
