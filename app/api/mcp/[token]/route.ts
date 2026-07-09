@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { z } from 'zod'
-import { ScanCommand, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { ScanCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText, putStoryText } from '@/lib/s3'
 import type { Clue } from '@/lib/clues'
@@ -351,6 +351,23 @@ function buildServer() {
         ? sorted.map(e => `${e.value > 0 ? '+' : ''}${e.value}  ${e.trait}`).join('\n')
         : '(all traits at zero)'
       return { content: [{ type: 'text', text: `Behavioral Profile of Observation:\n\n${summary}` }] }
+    }
+  )
+
+  server.tool(
+    'delete_episode',
+    'Permanently delete an episode and its tally record. Use with caution — this cannot be undone.',
+    { choice_point: z.string().describe('e.g. U001:E01:CP1') },
+    async ({ choice_point }) => {
+      const existing = await dynamo.send(new GetCommand({ TableName: CHAPTERS_TABLE, Key: { choice_point } }))
+      if (!existing.Item) {
+        return { content: [{ type: 'text', text: `Episode ${choice_point} not found.` }] }
+      }
+      await Promise.all([
+        dynamo.send(new DeleteCommand({ TableName: CHAPTERS_TABLE, Key: { choice_point } })),
+        dynamo.send(new DeleteCommand({ TableName: 'eigenthrope_tallies', Key: { choice_point } })),
+      ])
+      return { content: [{ type: 'text', text: `Deleted episode ${choice_point}.` }] }
     }
   )
 
