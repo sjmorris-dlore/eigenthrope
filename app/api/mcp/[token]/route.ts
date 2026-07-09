@@ -170,8 +170,10 @@ function buildServer() {
         })
       ).describe('At least 2 choices keyed by ID (A, B, C, D)'),
       voting_hours: z.number().default(24).describe('How long voting stays open in hours'),
+      author_link_url: z.string().optional().describe('URL to the author\'s website, shown in the nav bar'),
+      author_link_label: z.string().optional().describe('Display label for the author link; defaults to the hostname'),
     },
-    async ({ universe_id, chapter_label, prompt, choices, voting_hours }) => {
+    async ({ universe_id, chapter_label, prompt, choices, voting_hours, author_link_url, author_link_label }) => {
       if (Object.keys(choices).length < 2) {
         return { content: [{ type: 'text', text: 'At least 2 choices required.' }] }
       }
@@ -198,6 +200,8 @@ function buildServer() {
           prompt: prompt.trim(), choices,
           voting_opens_at: new Date().toISOString(),
           voting_closes_at: deadline,
+          ...(author_link_url ? { author_link_url } : {}),
+          ...(author_link_label ? { author_link_label } : {}),
         },
       }))
       return { content: [{ type: 'text', text: `Created chapter ${choice_point} ("${chapter_label}") with ${Object.keys(choices).length} choices.` }] }
@@ -217,8 +221,10 @@ function buildServer() {
         behavioral_weights: z.record(z.string(), z.number()).optional(),
       })).optional(),
       voting_closes_at: z.string().optional().describe('ISO 8601 datetime'),
+      author_link_url: z.string().optional().describe('URL to the author\'s website, shown in the nav bar'),
+      author_link_label: z.string().optional().describe('Display label for the author link; defaults to the hostname'),
     },
-    async ({ choice_point, chapter_label, prompt, choices, voting_closes_at }) => {
+    async ({ choice_point, chapter_label, prompt, choices, voting_closes_at, author_link_url, author_link_label }) => {
       const setParts: string[] = []
       const names: Record<string, string> = {}
       const values: Record<string, unknown> = {}
@@ -226,6 +232,8 @@ function buildServer() {
       if (prompt != null) { setParts.push('#p = :prompt'); names['#p'] = 'prompt'; values[':prompt'] = prompt }
       if (choices != null) { setParts.push('choices = :choices'); values[':choices'] = choices }
       if (voting_closes_at != null) { setParts.push('voting_closes_at = :vca'); values[':vca'] = voting_closes_at }
+      if (author_link_url != null) { setParts.push('author_link_url = :alu'); values[':alu'] = author_link_url }
+      if (author_link_label != null) { setParts.push('author_link_label = :all'); values[':all'] = author_link_label }
       if (setParts.length === 0) return { content: [{ type: 'text', text: 'No fields provided to update.' }] }
       await dynamo.send(new UpdateCommand({
         TableName: CHAPTERS_TABLE, Key: { choice_point },

@@ -31,6 +31,8 @@ export interface ChapterData {
   participation_nft_uri?: string
   participation_image_key?: string
   winner_image_key?: string
+  author_link_url?: string
+  author_link_label?: string
   // Populated server-side from S3, not stored in DB
   story_text?: string
   choice_intro_text?: string

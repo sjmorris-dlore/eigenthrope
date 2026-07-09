@@ -25,6 +25,8 @@ interface ChapterData {
   epilogue_key?: string
   winning_choice?: string
   final_tally?: Record<string, number>
+  author_link_url?: string
+  author_link_label?: string
 }
 
 interface TallyData {
@@ -695,6 +697,10 @@ export default function AdminPage() {
   const [editingEpisodeLabel, setEditingChapterLabel] = useState('')
   const [savingEpisodeLabel, setSavingChapterLabel] = useState(false)
   const [episodeLabelStatus, setChapterLabelStatus] = useState('')
+  const [editingAuthorLinkUrl, setEditingAuthorLinkUrl] = useState('')
+  const [editingAuthorLinkLabel, setEditingAuthorLinkLabel] = useState('')
+  const [savingAuthorLink, setSavingAuthorLink] = useState(false)
+  const [authorLinkStatus, setAuthorLinkStatus] = useState('')
   const [editingPrompt, setEditingPrompt] = useState('')
   const [savingPrompt, setSavingPrompt] = useState(false)
   const [promptStatus, setPromptStatus] = useState('')
@@ -783,6 +789,8 @@ export default function AdminPage() {
       if (chData) {
         setEditingChapterData(chData)
         setEditingChapterLabel(chData.chapter_label ?? '')
+        setEditingAuthorLinkUrl(chData.author_link_url ?? '')
+        setEditingAuthorLinkLabel(chData.author_link_label ?? '')
         setEditingPrompt(chData.prompt ?? '')
         setEditingChoices(chData.choices ?? {})
         setChoicesEditStatus('')
@@ -867,6 +875,29 @@ export default function AdminPage() {
       setChapterLabelStatus('Error: Request failed.')
     }
     setSavingChapterLabel(false)
+  }
+
+  async function saveAuthorLink() {
+    if (!editingChoicePoint) return
+    setSavingAuthorLink(true)
+    setAuthorLinkStatus('')
+    try {
+      const res = await fetch('/api/admin/chapter-data', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ choice_point: editingChoicePoint, author_link_url: editingAuthorLinkUrl, author_link_label: editingAuthorLinkLabel }),
+      })
+      if (res.ok) {
+        setAuthorLinkStatus('Saved.')
+        setEditingChapterData(prev => prev ? { ...prev, author_link_url: editingAuthorLinkUrl, author_link_label: editingAuthorLinkLabel } : prev)
+      } else {
+        const data = await res.json()
+        setAuthorLinkStatus(`Error: ${data.error}`)
+      }
+    } catch {
+      setAuthorLinkStatus('Error: Request failed.')
+    }
+    setSavingAuthorLink(false)
   }
 
   async function savePrompt() {
@@ -1214,6 +1245,29 @@ export default function AdminPage() {
                       </button>
                     </div>
                     <ActionStatus message={episodeLabelStatus} />
+                  </div>
+                )}
+                {editingChapterData && (
+                  <div>
+                    <label className="mb-1.5 block text-xs text-zinc-500">Author link</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={editingAuthorLinkUrl}
+                        onChange={e => setEditingAuthorLinkUrl(e.target.value)}
+                        placeholder="https://sjmorriswrites.com"
+                        className={`${inputClass} flex-1`}
+                      />
+                      <input
+                        value={editingAuthorLinkLabel}
+                        onChange={e => setEditingAuthorLinkLabel(e.target.value)}
+                        placeholder="Label (optional)"
+                        className={`${inputClass} w-36`}
+                      />
+                      <button onClick={saveAuthorLink} disabled={savingAuthorLink} className={btnClass}>
+                        {savingAuthorLink ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                    <ActionStatus message={authorLinkStatus} />
                   </div>
                 )}
                 <div>

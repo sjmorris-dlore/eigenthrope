@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import TopNav from "@/app/components/TopNav";
+import { EpisodeProvider } from "@/app/components/EpisodeContext";
 import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
@@ -61,8 +62,10 @@ export default function RootLayout({
         `}} />
       </head>
       <body className="flex min-h-full flex-col pt-12">
-        <TopNav />
-        {children}
+        <EpisodeProvider>
+          <TopNav />
+          {children}
+        </EpisodeProvider>
         <Analytics />
       </body>
     </html>

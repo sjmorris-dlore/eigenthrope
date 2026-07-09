@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import type { ChapterData } from '@/app/api/chapter/route'
 import ChapterTimer from './ChapterTimer'
+import { useEpisodeNav } from './EpisodeContext'
 
 interface VoteProps {
   account?: string | null
@@ -131,6 +132,7 @@ function PagedStory({
 }
 
 export default function Vote({ account, onVoted }: VoteProps) {
+  const { setNav } = useEpisodeNav()
   const [chapter, setChapter] = useState<ChapterData | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [qr, setQr] = useState<string | null>(null)
@@ -163,7 +165,10 @@ export default function Vote({ account, onVoted }: VoteProps) {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
       })
-      .then(setChapter)
+      .then((data: ChapterData) => {
+        setChapter(data)
+        setNav({ authorLinkUrl: data.author_link_url, authorLinkLabel: data.author_link_label })
+      })
       .catch(() => setError('Failed to load chapter.'))
   }, [])
 

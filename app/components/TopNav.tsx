@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
 import GameplayMenu from './GameplayMenu'
+import { useEpisodeNav } from './EpisodeContext'
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL
 
@@ -54,6 +55,24 @@ function PlayerNav() {
   )
 }
 
+function AuthorLink() {
+  const { nav } = useEpisodeNav()
+  if (!nav.authorLinkUrl) return null
+  const label = nav.authorLinkLabel || (() => {
+    try { return new URL(nav.authorLinkUrl!).hostname.replace(/^www\./, '') } catch { return nav.authorLinkUrl }
+  })()
+  return (
+    <a
+      href={nav.authorLinkUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={navLink}
+    >
+      {label}
+    </a>
+  )
+}
+
 export default function TopNav() {
   const pathname = usePathname()
   const isAdmin = pathname.startsWith('/admin')
@@ -63,7 +82,10 @@ export default function TopNav() {
       <div className="flex items-center gap-6">
         {isAdmin ? <AdminNav /> : <PlayerNav />}
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-4">
+        {!isAdmin && <AuthorLink />}
+        <ThemeToggle />
+      </div>
     </nav>
   )
 }
