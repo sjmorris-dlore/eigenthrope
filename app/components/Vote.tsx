@@ -37,6 +37,11 @@ const storyComponents: Components = {
   hr: () => <hr className="my-10 border-zinc-200 dark:border-zinc-800" />,
 }
 
+function episodeLabel(choicePoint: string): string {
+  const [u, e] = choicePoint.split(':')
+  return `Universe ${parseInt(u.replace(/^U/, ''), 10)}, Episode ${parseInt(e.replace(/^E/, ''), 10)}`
+}
+
 function splitPages(text: string): Array<{ title: string; body: string }> {
   const chunks = text.split(/(?=^# )/m).filter(c => c.trim())
   return chunks.map(chunk => {
@@ -272,7 +277,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
     return (
       <div className="flex w-full flex-col gap-6">
         <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
-          {chapter.chapter_label}
+          {episodeLabel(chapter.choice_point)}
         </p>
         {chapter.story_text && <PagedStory text={chapter.story_text} defaultCollapsed />}
         {chapter.outcome_text ? (
@@ -317,7 +322,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
     return (
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          {chapter.chapter_label}
+          {episodeLabel(chapter.choice_point)}
         </p>
         <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           Observation woven into the ledger.
@@ -336,7 +341,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
   return (
     <div className="flex w-full flex-col gap-6">
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
-        {chapter.chapter_label}
+        {episodeLabel(chapter.choice_point)}
       </p>
       {chapter.story_text && (
         <PagedStory text={chapter.story_text} onReadyChange={setVotingReady} />
