@@ -1,8 +1,22 @@
 'use client'
 
+import { useRef, useEffect } from 'react'
+
 export default function RabbitHoleMenu() {
+  const ref = useRef<HTMLDetailsElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        ref.current.open = false
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [])
+
   return (
-    <details className="group relative">
+    <details ref={ref} className="group relative">
       <summary className="cursor-pointer list-none text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
         Rabbit Hole
       </summary>

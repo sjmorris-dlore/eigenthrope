@@ -1,15 +1,29 @@
 'use client'
 
 import Link from 'next/link'
+import { useRef, useEffect } from 'react'
 
 export default function GameplayMenu() {
+  const ref = useRef<HTMLDetailsElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        ref.current.open = false
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [])
+
   return (
-    <details className="group relative">
+    <details ref={ref} className="group relative">
       <summary className="cursor-pointer list-none text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
         Gameplay
       </summary>
 
-      <div className="fixed left-2 right-2 top-14 z-50 rounded-xl border border-zinc-200 bg-zinc-50 p-5 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:w-80">
+      <div className="fixed left-2 right-2 top-14 z-50 rounded-xl border border-zinc-200 bg-zinc-50 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:w-80">
+        <div className="max-h-[70vh] overflow-y-auto p-5">
         <div className="space-y-4 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
           <div>
             <p className="font-medium text-zinc-900 dark:text-zinc-50">1. Read the chapter</p>
@@ -32,7 +46,8 @@ export default function GameplayMenu() {
             <p className="mt-1">Artifacts are standard XRP Ledger NFTs. Hold them to build Resonance or trade them on any XRPL NFT marketplace.</p>
           </div>
         </div>
-        <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        </div>
+        <div className="border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
           <Link
             href="/wallet"
             className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
