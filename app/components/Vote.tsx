@@ -37,13 +37,13 @@ const storyComponents: Components = {
 }
 
 function splitPages(text: string): Array<{ title: string; body: string }> {
-  const chunks = text.split(/(?=^## )/m).filter(c => c.trim())
+  const chunks = text.split(/(?=^# )/m).filter(c => c.trim())
   return chunks.map(chunk => {
     const nl = chunk.indexOf('\n')
     const firstLine = nl === -1 ? chunk : chunk.slice(0, nl)
     const rest = nl === -1 ? '' : chunk.slice(nl + 1)
-    if (firstLine.trimStart().startsWith('## ')) {
-      return { title: firstLine.trim().slice(3).trim(), body: rest.trim() }
+    if (firstLine.trimStart().startsWith('# ')) {
+      return { title: firstLine.trim().slice(2).trim(), body: rest.trim() }
     }
     return { title: '', body: chunk.trim() }
   })
