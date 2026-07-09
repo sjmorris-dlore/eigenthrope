@@ -7,6 +7,8 @@ import { fetchStoryText, putStoryText } from '@/lib/s3'
 import type { Clue } from '@/lib/clues'
 import { triggersToCell } from '@/lib/clues'
 import type { ChapterData } from '@/app/api/chapter/route'
+import { BEHAVIORAL_TRAITS, emptyProfile, accumulateWeights } from '@/lib/behavioral'
+import type { BehavioralProfile } from '@/lib/behavioral'
 
 const CHAPTERS_TABLE = 'eigenthrope_chapters'
 const UNIVERSES_TABLE = 'eigenthrope_universes'
@@ -160,7 +162,12 @@ function buildServer() {
       prompt: z.string().describe('Internal admin prompt / narrative setup notes'),
       choices: z.record(
         z.string().describe('Choice ID: A, B, C, or D'),
-        z.object({ label: z.string(), description: z.string() })
+        z.object({
+          label: z.string(),
+          description: z.string(),
+          behavioral_weights: z.record(z.string(), z.number()).optional()
+            .describe(`Trait weights for this choice, -5 to +5. Traits: ${BEHAVIORAL_TRAITS.join(', ')}`),
+        })
       ).describe('At least 2 choices keyed by ID (A, B, C, D)'),
       voting_hours: z.number().default(24).describe('How long voting stays open in hours'),
     },
@@ -203,7 +210,11 @@ function buildServer() {
       choice_point: z.string().describe('e.g. U001:C01:CP1'),
       chapter_label: z.string().optional(),
       prompt: z.string().optional(),
-      choices: z.record(z.string(), z.object({ label: z.string(), description: z.string() })).optional(),
+      choices: z.record(z.string(), z.object({
+        label: z.string(),
+        description: z.string(),
+        behavioral_weights: z.record(z.string(), z.number()).optional(),
+      })).optional(),
       voting_closes_at: z.string().optional().describe('ISO 8601 datetime'),
     },
     async ({ choice_point, chapter_label, prompt, choices, voting_closes_at }) => {
@@ -316,6 +327,59 @@ function buildServer() {
         await dynamo.send(new UpdateCommand({ TableName: CHAPTERS_TABLE, Key: { choice_point }, UpdateExpression: 'SET choice_outcomes = :co', ExpressionAttributeValues: { ':co': { ...existing, [choice_id!]: s3Key } } }))
       }
       return { content: [{ type: 'text', text: `Saved ${type} for ${choice_point} → ${s3Key}` }] }
+    }
+  )
+
+  server.tool(
+    'get_behavioral_profile',
+    'Get the Antagonist\'s accumulated behavioral profile of Observation — the running tally of trait weights from all closed chapter outcomes.',
+    {},
+    async () => {
+      const result = await dynamo.send(new GetCommand({
+        TableName: 'eigenthrope_config',
+        Key: { key: 'behavioral_profile' },
+      }))
+      if (!result.Item?.value) {
+        return { content: [{ type: 'text', text: 'No behavioral profile recorded yet. Profile accumulates as chapters close.' }] }
+      }
+      const profile = result.Item.value as Partial<BehavioralProfile>
+      const sorted = BEHAVIORAL_TRAITS
+        .map(t => ({ trait: t, value: profile[t] ?? 0 }))
+        .filter(e => e.value !== 0)
+        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      const summary = sorted.length > 0
+        ? sorted.map(e => `${e.value > 0 ? '+' : ''}${e.value}  ${e.trait}`).join('\n')
+        : '(all traits at zero)'
+      return { content: [{ type: 'text', text: `Behavioral Profile of Observation:\n\n${summary}` }] }
+    }
+  )
+
+  server.tool(
+    'set_behavioral_weights',
+    'Manually apply trait weights to the behavioral profile. Accumulates on top of existing values unless replace=true.',
+    {
+      weights: z.record(z.string(), z.number()).describe(`Trait weights to apply. Valid traits: ${BEHAVIORAL_TRAITS.join(', ')}`),
+      replace: z.boolean().default(false).describe('If true, replaces the entire profile instead of accumulating'),
+    },
+    async ({ weights, replace }) => {
+      if (replace) {
+        await dynamo.send(new PutCommand({
+          TableName: 'eigenthrope_config',
+          Item: { key: 'behavioral_profile', value: weights },
+        }))
+        return { content: [{ type: 'text', text: 'Profile replaced.' }] }
+      }
+      const existing = await dynamo.send(new GetCommand({
+        TableName: 'eigenthrope_config',
+        Key: { key: 'behavioral_profile' },
+      }))
+      const current = (existing.Item?.value ?? {}) as Partial<BehavioralProfile>
+      const merged = accumulateWeights({ ...emptyProfile(), ...current }, weights)
+      await dynamo.send(new PutCommand({
+        TableName: 'eigenthrope_config',
+        Item: { key: 'behavioral_profile', value: merged },
+      }))
+      return { content: [{ type: 'text', text: 'Profile updated.' }] }
     }
   )
 

@@ -3,10 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { LibraryChapter } from '@/app/api/admin/nft-library/route'
+import { BEHAVIORAL_TRAITS } from '@/lib/behavioral'
+import type { BehavioralWeights } from '@/lib/behavioral'
 
 interface Choice {
   label: string
   description: string
+  behavioral_weights?: BehavioralWeights
 }
 
 interface ChapterData {
@@ -386,6 +389,63 @@ function LibrarySection() {
   )
 }
 
+// ─── Behavioral weight grid ───────────────────────────────────────────────────
+
+function BehavioralWeightGrid({
+  weights,
+  onChange,
+}: {
+  weights: BehavioralWeights
+  onChange: (next: BehavioralWeights) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const nonZeroCount = BEHAVIORAL_TRAITS.filter(t => (weights[t] ?? 0) !== 0).length
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+      >
+        Behavioral weights{nonZeroCount > 0 ? ` · ${nonZeroCount} set` : ''} {expanded ? '▲' : '▼'}
+      </button>
+      {expanded && (
+        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
+          {BEHAVIORAL_TRAITS.map(trait => {
+            const val = weights[trait] ?? 0
+            return (
+              <div key={trait} className="flex items-center gap-2">
+                <span className={`flex-1 truncate text-[11px] ${val !== 0 ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'}`}>
+                  {trait}
+                </span>
+                <input
+                  type="number"
+                  min={-5}
+                  max={5}
+                  value={val}
+                  onChange={e => {
+                    const n = parseInt(e.target.value) || 0
+                    const next = { ...weights }
+                    if (n === 0) delete next[trait]
+                    else next[trait] = n
+                    onChange(next)
+                  }}
+                  className={`w-14 rounded border px-1 py-0.5 text-center text-xs focus:outline-none
+                    ${val !== 0
+                      ? 'border-zinc-400 bg-white text-zinc-900 dark:border-zinc-500 dark:bg-zinc-700 dark:text-zinc-100'
+                      : 'border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-600'
+                    }`}
+                />
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Universe nav ─────────────────────────────────────────────────────────────
 
 function UniverseNav({
@@ -638,7 +698,7 @@ export default function AdminPage() {
   const [editingPrompt, setEditingPrompt] = useState('')
   const [savingPrompt, setSavingPrompt] = useState(false)
   const [promptStatus, setPromptStatus] = useState('')
-  const [editingChoices, setEditingChoices] = useState<Record<string, { label: string; description: string }>>({})
+  const [editingChoices, setEditingChoices] = useState<Record<string, Choice>>({})
   const [savingChoices, setSavingChoices] = useState(false)
   const [choicesEditStatus, setChoicesEditStatus] = useState('')
 
@@ -665,6 +725,7 @@ export default function AdminPage() {
   const [editingChoicePoint, setEditingChoicePoint] = useState<string | null>(null)
   const [editingChapterData, setEditingChapterData] = useState<ChapterData | null>(null)
   const [contentTab, setContentTab] = useState<'content' | 'library'>('content')
+  const [behavioralProfile, setBehavioralProfile] = useState<Record<string, number> | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -695,6 +756,9 @@ export default function AdminPage() {
         setLoadError('No active chapter found.')
       }
       if (tallyRes.ok) setTally(await tallyRes.json())
+
+      const profileRes = await fetch('/api/admin/behavioral-profile')
+      if (profileRes.ok) setBehavioralProfile(await profileRes.json())
     } catch {
       setLoadError('Failed to load chapter data.')
     }
@@ -1214,12 +1278,16 @@ export default function AdminPage() {
                               className={`${smallInputClass} flex-1`}
                             />
                           </div>
-                          <div className="pl-6">
+                          <div className="pl-6 space-y-1">
                             <input
                               value={c.description}
                               onChange={e => setEditingChoices(prev => ({ ...prev, [id]: { ...prev[id], description: e.target.value } }))}
                               placeholder="Description (shown on button)"
                               className={smallInputClass}
+                            />
+                            <BehavioralWeightGrid
+                              weights={c.behavioral_weights ?? {}}
+                              onChange={w => setEditingChoices(prev => ({ ...prev, [id]: { ...prev[id], behavioral_weights: w } }))}
                             />
                           </div>
                         </div>
@@ -1413,6 +1481,42 @@ export default function AdminPage() {
                 <span>Clue Library</span>
                 <span className="text-zinc-400">→</span>
               </a>
+            </Section>
+
+            <Section title="Behavioral Profile">
+              <p className="mb-4 text-xs text-zinc-400 dark:text-zinc-600">
+                Accumulated observation data across all closed chapters. Updated automatically when a chapter closes.
+              </p>
+              {!behavioralProfile || Object.keys(behavioralProfile).length === 0 ? (
+                <p className="text-xs text-zinc-400">No data yet — profile builds as chapters close.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                  {BEHAVIORAL_TRAITS.map(trait => {
+                    const val = behavioralProfile[trait] ?? 0
+                    const abs = Math.abs(val)
+                    const maxAbs = Math.max(...Object.values(behavioralProfile).map(Math.abs), 1)
+                    const pct = Math.round((abs / maxAbs) * 100)
+                    return (
+                      <div key={trait}>
+                        <div className="flex items-center justify-between text-xs mb-0.5">
+                          <span className={val !== 0 ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-600'}>
+                            {trait}
+                          </span>
+                          <span className={`font-mono text-[11px] ${val > 0 ? 'text-emerald-600 dark:text-emerald-400' : val < 0 ? 'text-rose-500 dark:text-rose-400' : 'text-zinc-400'}`}>
+                            {val > 0 ? `+${val}` : val}
+                          </span>
+                        </div>
+                        <div className="h-0.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                          <div
+                            className={`h-full rounded-full transition-all ${val > 0 ? 'bg-emerald-400 dark:bg-emerald-600' : val < 0 ? 'bg-rose-400 dark:bg-rose-600' : ''}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </Section>
 
           </div>

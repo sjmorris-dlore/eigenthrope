@@ -4,6 +4,8 @@ import { getResetVersion } from '@/lib/config'
 import { postDiscord, chapterClosedEmbed } from '@/lib/discord'
 import type { ChapterData } from '@/app/api/chapter/route'
 import type { Clue } from '@/lib/clues'
+import { emptyProfile, accumulateWeights } from '@/lib/behavioral'
+import type { BehavioralProfile } from '@/lib/behavioral'
 
 const XRPL_RPC = 'https://xrplcluster.com/'
 const MIN_YIELD = 0.05
@@ -132,6 +134,23 @@ export async function GET(request: Request) {
       ':yp': yieldPct,
     },
   }))
+
+  // Accumulate behavioral weights from winning choice into running profile
+  if (winningChoice) {
+    const weights = chapter.choices?.[winningChoice]?.behavioral_weights
+    if (weights && Object.keys(weights).length > 0) {
+      const profileItem = await dynamo.send(new GetCommand({
+        TableName: 'eigenthrope_config',
+        Key: { key: 'behavioral_profile' },
+      }))
+      const existing = (profileItem.Item?.value ?? {}) as Partial<BehavioralProfile>
+      const merged = accumulateWeights({ ...emptyProfile(), ...existing }, weights)
+      await dynamo.send(new PutCommand({
+        TableName: 'eigenthrope_config',
+        Item: { key: 'behavioral_profile', value: merged },
+      }))
+    }
+  }
 
   // Auto-discover clues triggered by this branch outcome
   if (winningChoice) {

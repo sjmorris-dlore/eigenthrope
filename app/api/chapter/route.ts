@@ -1,10 +1,12 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText } from '@/lib/s3'
+import type { BehavioralWeights } from '@/lib/behavioral'
 
 export interface Choice {
   label: string
   description: string
+  behavioral_weights?: BehavioralWeights
 }
 
 export interface ChapterData {
