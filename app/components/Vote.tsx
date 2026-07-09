@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import type { ChapterData } from '@/app/api/chapter/route'
@@ -36,6 +36,19 @@ const storyComponents: Components = {
   hr: () => <hr className="my-10 border-zinc-200 dark:border-zinc-800" />,
 }
 
+function splitPages(text: string): Array<{ title: string; body: string }> {
+  const chunks = text.split(/(?=^# )/m).filter(c => c.trim())
+  return chunks.map(chunk => {
+    const nl = chunk.indexOf('\n')
+    const firstLine = nl === -1 ? chunk : chunk.slice(0, nl)
+    const rest = nl === -1 ? '' : chunk.slice(nl + 1)
+    if (firstLine.trimStart().startsWith('# ')) {
+      return { title: firstLine.trim().slice(2).trim(), body: rest.trim() }
+    }
+    return { title: '', body: chunk.trim() }
+  })
+}
+
 function StoryText({ text }: { text: string }) {
   return (
     <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-10 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:px-12">
@@ -44,8 +57,12 @@ function StoryText({ text }: { text: string }) {
   )
 }
 
-function CollapsibleStory({ text, defaultCollapsed = false }: { text: string; defaultCollapsed?: boolean }) {
+function PagedStory({ text, defaultCollapsed = false }: { text: string; defaultCollapsed?: boolean }) {
+  const pages = useMemo(() => splitPages(text), [text])
+  const [page, setPage] = useState(0)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const current = pages[page]
+
   return (
     <div className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between px-8 pt-6 sm:px-12">
@@ -57,13 +74,38 @@ function CollapsibleStory({ text, defaultCollapsed = false }: { text: string; de
           {collapsed ? 'Read ↓' : 'Collapse ↑'}
         </button>
       </div>
-      {collapsed ? (
-        <div className="px-8 pb-6 sm:px-12" />
-      ) : (
-        <div className="px-8 pb-10 pt-6 text-left sm:px-12">
-          <ReactMarkdown components={storyComponents}>{text}</ReactMarkdown>
+      {!collapsed && current && (
+        <div className="px-8 pb-10 pt-4 text-left sm:px-12">
+          {current.title && (
+            <p className="mb-6 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+              {current.title}
+            </p>
+          )}
+          <ReactMarkdown components={storyComponents}>{current.body}</ReactMarkdown>
+          {pages.length > 1 && (
+            <div className="mt-10 flex items-center justify-between">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 0}
+                className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-600 disabled:invisible dark:hover:text-zinc-300"
+              >
+                ← {pages[page - 1]?.title ?? 'Back'}
+              </button>
+              <span className="text-[10px] text-zinc-300 dark:text-zinc-700">
+                {page + 1} / {pages.length}
+              </span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page === pages.length - 1}
+                className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-600 disabled:invisible dark:hover:text-zinc-300"
+              >
+                {pages[page + 1]?.title ?? 'Next'} →
+              </button>
+            </div>
+          )}
         </div>
       )}
+      {collapsed && <div className="px-8 pb-6 sm:px-12" />}
     </div>
   )
 }
@@ -198,7 +240,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
         <p className="text-center text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
           {chapter.chapter_label}
         </p>
-        {chapter.story_text && <CollapsibleStory text={chapter.story_text} defaultCollapsed />}
+        {chapter.story_text && <PagedStory text={chapter.story_text} defaultCollapsed />}
         {chapter.outcome_text ? (
           <StoryText text={chapter.outcome_text} />
         ) : (
@@ -262,7 +304,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
         {chapter.chapter_label}
       </p>
-      {chapter.story_text && <CollapsibleStory text={chapter.story_text} />}
+      {chapter.story_text && <PagedStory text={chapter.story_text} />}
       {account ? (
         <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
