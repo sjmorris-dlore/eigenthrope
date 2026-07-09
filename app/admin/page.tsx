@@ -1250,22 +1250,24 @@ export default function AdminPage() {
                 {editingChapterData && (
                   <div>
                     <label className="mb-1.5 block text-xs text-zinc-500">Author link</label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                       <input
                         value={editingAuthorLinkUrl}
                         onChange={e => setEditingAuthorLinkUrl(e.target.value)}
                         placeholder="https://sjmorriswrites.com"
-                        className={`${inputClass} flex-1`}
+                        className={inputClass}
                       />
-                      <input
-                        value={editingAuthorLinkLabel}
-                        onChange={e => setEditingAuthorLinkLabel(e.target.value)}
-                        placeholder="Label (optional)"
-                        className={`${inputClass} w-36`}
-                      />
-                      <button onClick={saveAuthorLink} disabled={savingAuthorLink} className={btnClass}>
-                        {savingAuthorLink ? 'Saving…' : 'Save'}
-                      </button>
+                      <div className="flex gap-2">
+                        <input
+                          value={editingAuthorLinkLabel}
+                          onChange={e => setEditingAuthorLinkLabel(e.target.value)}
+                          placeholder="Label (optional — defaults to hostname)"
+                          className={`${inputClass} flex-1`}
+                        />
+                        <button onClick={saveAuthorLink} disabled={savingAuthorLink} className={btnClass}>
+                          {savingAuthorLink ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
                     </div>
                     <ActionStatus message={authorLinkStatus} />
                   </div>
