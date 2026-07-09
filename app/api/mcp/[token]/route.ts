@@ -182,11 +182,12 @@ function buildServer() {
         ExpressionAttributeValues: { ':uid': universe_id.toUpperCase() },
         ProjectionExpression: 'chapter',
       }))
-      const maxNum = (existing.Items ?? []).reduce((max, c) => {
-        const n = parseInt((c['chapter'] as string).replace(/^[CE]/, '')) || 0
-        return Math.max(max, n)
-      }, 0)
-      const chapter = `E${String(maxNum + 1).padStart(2, '0')}`
+      const usedNums = new Set((existing.Items ?? []).map(c =>
+        parseInt((c['chapter'] as string).replace(/^[CE]/, '')) || 0
+      ))
+      let nextNum = 1
+      while (usedNums.has(nextNum)) nextNum++
+      const chapter = `E${String(nextNum).padStart(2, '0')}`
       const choice_point = `${universe_id.toUpperCase()}:${chapter}:CP1`
       const deadline = new Date(Date.now() + voting_hours * 60 * 60 * 1000).toISOString()
       await dynamo.send(new PutCommand({
