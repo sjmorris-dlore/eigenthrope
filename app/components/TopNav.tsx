@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
 import GameplayMenu from './GameplayMenu'
 import { useEpisodeNav } from './EpisodeContext'
+import RabbitHoleMenu from './RabbitHoleMenu'
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL
 
@@ -51,6 +52,7 @@ function PlayerNav() {
         </a>
       )}
       <GameplayMenu />
+      <RabbitHoleMenu />
     </>
   )
 }
