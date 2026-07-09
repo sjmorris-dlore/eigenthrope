@@ -789,8 +789,8 @@ export default function AdminPage() {
       if (chData) {
         setEditingChapterData(chData)
         setEditingChapterLabel(chData.chapter_label ?? '')
-        setEditingAuthorLinkUrl(chData.author_link_url ?? '')
-        setEditingAuthorLinkLabel(chData.author_link_label ?? '')
+        setEditingAuthorLinkUrl(chData.author_link_url ?? 'https://sjmorriswrites.com')
+        setEditingAuthorLinkLabel(chData.author_link_label ?? 'sjmorriswrites')
         setEditingPrompt(chData.prompt ?? '')
         setEditingChoices(chData.choices ?? {})
         setChoicesEditStatus('')

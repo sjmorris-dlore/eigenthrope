@@ -30,11 +30,13 @@ export async function PATCH(request: Request) {
     winner_nft_uri?: string
     participation_nft_uri?: string
     voting_closes_at?: string
+    author_link_url?: string
+    author_link_label?: string
   }
 
-  const { choice_point, chapter_label, choices, prompt, winner_nft_uri, participation_nft_uri, voting_closes_at } = body
+  const { choice_point, chapter_label, choices, prompt, winner_nft_uri, participation_nft_uri, voting_closes_at, author_link_url, author_link_label } = body
 
-  if (!choice_point || (!choices && chapter_label === undefined && prompt === undefined && winner_nft_uri === undefined && participation_nft_uri === undefined && voting_closes_at === undefined)) {
+  if (!choice_point || (!choices && chapter_label === undefined && prompt === undefined && winner_nft_uri === undefined && participation_nft_uri === undefined && voting_closes_at === undefined && author_link_url === undefined && author_link_label === undefined)) {
     return Response.json({ error: 'choice_point and at least one field required' }, { status: 400 })
   }
 
@@ -66,6 +68,14 @@ export async function PATCH(request: Request) {
   if (voting_closes_at !== undefined) {
     setParts.push('voting_closes_at = :vca')
     values[':vca'] = voting_closes_at
+  }
+  if (author_link_url !== undefined) {
+    setParts.push('author_link_url = :alu')
+    values[':alu'] = author_link_url
+  }
+  if (author_link_label !== undefined) {
+    setParts.push('author_link_label = :all')
+    values[':all'] = author_link_label
   }
 
   await dynamo.send(new UpdateCommand({
