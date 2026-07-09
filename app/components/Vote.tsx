@@ -382,7 +382,16 @@ export default function Vote({ account, onVoted }: VoteProps) {
             Connect your Xaman wallet above to cast your vote and collapse the wave.
           </p>
         </div>
-      ) : null}
+      ) : (
+        <div className="w-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-8 py-6 text-center dark:border-zinc-700 dark:bg-zinc-900">
+          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+            Collapse the Wave
+          </p>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            Voting unlocks once you've read the full episode.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
