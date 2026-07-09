@@ -100,11 +100,11 @@ const btnClass =
 const smallBtnClass =
   'rounded bg-zinc-800 px-2 py-1 text-[11px] text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-700 dark:hover:bg-zinc-600'
 
-// ─── New chapter form ─────────────────────────────────────────────────────────
+// ─── New episode form ─────────────────────────────────────────────────────────
 
 const LETTER_IDS = ['A', 'B', 'C', 'D']
 
-function NewChapterForm({
+function NewEpisodeForm({
   universeId,
   onCreated,
   onCancel,
@@ -158,8 +158,8 @@ function NewChapterForm({
 
   return (
     <form onSubmit={submit} className="mt-3 space-y-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">New Chapter</p>
-      <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Chapter label" className={smallInputClass} />
+      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">New Episode</p>
+      <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Episode label" className={smallInputClass} />
       <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Prompt — what are observers deciding?" rows={2} className={smallInputClass} />
       <div className="space-y-2">
         {choices.map((c, i) => (
@@ -189,7 +189,7 @@ function NewChapterForm({
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={saving} className={smallBtnClass}>{saving ? 'Creating…' : 'Create Chapter'}</button>
+        <button type="submit" disabled={saving} className={smallBtnClass}>{saving ? 'Creating…' : 'Create Episode'}</button>
         <button type="button" onClick={onCancel} className="text-[11px] text-zinc-400 hover:text-zinc-600">Cancel</button>
       </div>
     </form>
@@ -362,7 +362,7 @@ function LibrarySection() {
   }, {})
 
   if (loading) return <p className="text-sm text-zinc-400">Loading…</p>
-  if (chapters.length === 0) return <p className="text-sm text-zinc-400">No chapters yet.</p>
+  if (chapters.length === 0) return <p className="text-sm text-zinc-400">No episodes yet.</p>
 
   return (
     <div className="space-y-8">
@@ -465,7 +465,7 @@ function UniverseNav({
   const [newUniverseForm, setNewUniverseForm] = useState({ id: '', title: '' })
   const [creatingUniverse, setCreatingUniverse] = useState(false)
   const [universeError, setUniverseError] = useState('')
-  const [newChapterFor, setNewChapterFor] = useState<string | null>(null)
+  const [newEpisodeFor, setNewChapterFor] = useState<string | null>(null)
   const [activating, setActivating] = useState<string | null>(null)
   const [renamingUniverse, setRenamingUniverse] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -571,7 +571,7 @@ function UniverseNav({
                   </button>
                 )}
                 {u.chapters.length === 0 && (
-                  <p className="py-1 text-[11px] text-zinc-400">No chapters yet.</p>
+                  <p className="py-1 text-[11px] text-zinc-400">No episodes yet.</p>
                 )}
                 {u.chapters.map(ch => {
                   const isActive = ch.choice_point === activeChoicePoint
@@ -614,8 +614,8 @@ function UniverseNav({
                   )
                 })}
 
-                {newChapterFor === u.universe_id ? (
-                  <NewChapterForm
+                {newEpisodeFor === u.universe_id ? (
+                  <NewEpisodeForm
                     universeId={u.universe_id}
                     onCreated={async () => { setNewChapterFor(null); await loadUniverses() }}
                     onCancel={() => setNewChapterFor(null)}
@@ -625,7 +625,7 @@ function UniverseNav({
                     onClick={() => setNewChapterFor(u.universe_id)}
                     className="mt-1 text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
                   >
-                    + New chapter
+                    + New episode
                   </button>
                 )}
               </div>
@@ -692,9 +692,9 @@ export default function AdminPage() {
   const [resetHours, setResetHours] = useState(24)
   const [resetStatus, setResetStatus] = useState('')
 
-  const [editingChapterLabel, setEditingChapterLabel] = useState('')
-  const [savingChapterLabel, setSavingChapterLabel] = useState(false)
-  const [chapterLabelStatus, setChapterLabelStatus] = useState('')
+  const [editingEpisodeLabel, setEditingChapterLabel] = useState('')
+  const [savingEpisodeLabel, setSavingChapterLabel] = useState(false)
+  const [episodeLabelStatus, setChapterLabelStatus] = useState('')
   const [editingPrompt, setEditingPrompt] = useState('')
   const [savingPrompt, setSavingPrompt] = useState(false)
   const [promptStatus, setPromptStatus] = useState('')
@@ -713,7 +713,7 @@ export default function AdminPage() {
   const [timerMinutes, setTimerMinutes] = useState(5)
   const [settingTimer, setSettingTimer] = useState(false)
   const [timerStatus, setTimerStatus] = useState('')
-  const [closingChapter, setClosingChapter] = useState(false)
+  const [closingEpisode, setClosingChapter] = useState(false)
   const [closeStatus, setCloseStatus] = useState('')
   const [mintingNFTs, setMintingNFTs] = useState(false)
   const [mintStatus, setMintStatus] = useState('')
@@ -846,7 +846,7 @@ export default function AdminPage() {
     setUploading(false)
   }
 
-  async function saveChapterLabel() {
+  async function saveEpisodeLabel() {
     if (!editingChoicePoint) return
     setSavingChapterLabel(true)
     setChapterLabelStatus('')
@@ -854,11 +854,11 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/chapter-data', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ choice_point: editingChoicePoint, chapter_label: editingChapterLabel }),
+        body: JSON.stringify({ choice_point: editingChoicePoint, chapter_label: editingEpisodeLabel }),
       })
       if (res.ok) {
         setChapterLabelStatus('Saved.')
-        setEditingChapterData(prev => prev ? { ...prev, chapter_label: editingChapterLabel } : prev)
+        setEditingChapterData(prev => prev ? { ...prev, chapter_label: editingEpisodeLabel } : prev)
       } else {
         const data = await res.json()
         setChapterLabelStatus(`Error: ${data.error}`)
@@ -927,7 +927,7 @@ export default function AdminPage() {
     setAnnouncing(false)
   }
 
-  async function closeChapter() {
+  async function closeEpisode() {
     setClosingChapter(true)
     setCloseStatus('')
     try {
@@ -1026,8 +1026,8 @@ export default function AdminPage() {
     setCreatingOffers(false)
   }
 
-  async function resetChapter() {
-    if (!confirm(`Reset chapter? This increments reset_version and reopens voting for ${resetHours}h.`)) return
+  async function resetEpisode() {
+    if (!confirm(`Reset episode? This increments reset_version and reopens voting for ${resetHours}h.`)) return
     setResetting(true)
     setResetStatus('')
     try {
@@ -1046,14 +1046,14 @@ export default function AdminPage() {
   }
 
   async function resetFullGame() {
-    if (!confirm('Reset the entire game? This will:\n• Increment reset_version (old votes and NFT taxons are retired)\n• Clear all tally caches\n• Remove the active chapter (site goes dormant until you make a chapter live)\n\nThis cannot be undone.')) return
+    if (!confirm('Reset the entire game? This will:\n• Increment reset_version (old votes and NFT taxons are retired)\n• Clear all tally caches\n• Remove the active episode (site goes dormant until you make an episode live)\n\nThis cannot be undone.')) return
     setResettingGame(true)
     setResetGameStatus('')
     try {
       const res = await fetch('/api/admin/reset-game', { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
-        setResetGameStatus(`Game reset. New rv=${data.reset_version}. Winner taxon ${data.winner_taxon}, participation ${data.participation_taxon}. Make a chapter live to restart.`)
+        setResetGameStatus(`Game reset. New rv=${data.reset_version}. Winner taxon ${data.winner_taxon}, participation ${data.participation_taxon}. Make an episode live to restart.`)
         await loadData()
       } else setResetGameStatus(`Error: ${data.error}`)
     } catch { setResetGameStatus('Error: Request failed.') }
@@ -1115,7 +1115,7 @@ export default function AdminPage() {
           <div className="space-y-6">
 
             {/* Active chapter */}
-            <Section title="Active Chapter">
+            <Section title="Active Episode">
               {loadError ? (
                 <p className="text-sm text-zinc-500">{loadError}</p>
               ) : !chapter ? (
@@ -1201,19 +1201,19 @@ export default function AdminPage() {
               <div className="space-y-6">
                 {editingChapterData && (
                   <div>
-                    <label className="mb-1.5 block text-xs text-zinc-500">Chapter label</label>
+                    <label className="mb-1.5 block text-xs text-zinc-500">Episode label</label>
                     <div className="flex gap-2">
                       <input
-                        value={editingChapterLabel}
+                        value={editingEpisodeLabel}
                         onChange={e => setEditingChapterLabel(e.target.value)}
                         placeholder="e.g. The Laboratory"
                         className={`${inputClass} flex-1`}
                       />
-                      <button onClick={saveChapterLabel} disabled={savingChapterLabel} className={btnClass}>
-                        {savingChapterLabel ? 'Saving…' : 'Save'}
+                      <button onClick={saveEpisodeLabel} disabled={savingEpisodeLabel} className={btnClass}>
+                        {savingEpisodeLabel ? 'Saving…' : 'Save'}
                       </button>
                     </div>
-                    <ActionStatus message={chapterLabelStatus} />
+                    <ActionStatus message={episodeLabelStatus} />
                   </div>
                 )}
                 <div>
@@ -1338,7 +1338,7 @@ export default function AdminPage() {
             <Section title="Actions">
               <div className="space-y-6">
                 <div>
-                  <p className="mb-2 text-xs text-zinc-500">Post chapter announcement to Discord with current prompt and choices.</p>
+                  <p className="mb-2 text-xs text-zinc-500">Post episode announcement to Discord with current prompt and choices.</p>
                   <button onClick={announce} disabled={announcing || !chapter}
                     className="rounded bg-indigo-600 px-3 py-1.5 text-xs text-white hover:bg-indigo-500 disabled:opacity-40 dark:bg-indigo-800 dark:hover:bg-indigo-700">
                     {announcing ? 'Announcing…' : 'Announce on Discord'}
@@ -1347,7 +1347,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <p className="mb-1.5 text-xs text-zinc-500">
-                    Adjust the active chapter&apos;s voting deadline. Useful for testing timer behaviour.
+                    Adjust the active episode&apos;s voting deadline. Useful for testing timer behaviour.
                     {chapter?.voting_closes_at && (
                       <span className="ml-1 text-zinc-400">
                         Current: {new Date(chapter.voting_closes_at).toLocaleString()}
@@ -1395,23 +1395,23 @@ export default function AdminPage() {
                   <ActionStatus message={timerStatus} />
                 </div>
                 <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
-                  <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">Close Chapter</p>
+                  <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">Close Episode</p>
                   <p className="mb-3 text-xs text-zinc-500">
-                    Tallies on-chain votes, sets the winner, and marks the chapter closed. Required before minting.
+                    Tallies on-chain votes, sets the winner, and marks the episode closed. Required before minting.
                   </p>
                   <button
-                    onClick={closeChapter}
-                    disabled={closingChapter || !chapter || chapter.status === 'closed'}
+                    onClick={closeEpisode}
+                    disabled={closingEpisode || !chapter || chapter.status === 'closed'}
                     className="rounded bg-rose-700 px-3 py-1.5 text-xs text-white hover:bg-rose-600 disabled:opacity-40 dark:bg-rose-900 dark:hover:bg-rose-800"
                   >
-                    {closingChapter ? 'Closing…' : chapter?.status === 'closed' ? 'Already Closed' : 'Close Chapter Now'}
+                    {closingEpisode ? 'Closing…' : chapter?.status === 'closed' ? 'Already Closed' : 'Close Episode Now'}
                   </button>
                   <ActionStatus message={closeStatus} />
                 </div>
                 <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
                   <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">NFT Distribution</p>
                   <p className="mb-3 text-xs text-zinc-500">
-                    Chapter must be closed. Step 1 mints NFTs to the vault — wait for the tally
+                    Episode must be closed. Step 1 mints NFTs to the vault — wait for the tally
                     below to stabilize before running Step 2. Step 2 creates sell offers and triggers
                     the claim UI; it is safe to run multiple times if the count looks low.
                   </p>
@@ -1444,7 +1444,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <p className="mb-2 text-xs text-zinc-500">
-                    Increment reset_version, reopen the current chapter, and bust tally cache.
+                    Increment reset_version, reopen the current episode, and bust tally cache.
                     Existing blockchain votes are preserved but excluded from tallies and NFT minting.
                   </p>
                   <div className="flex items-center gap-3">
@@ -1452,7 +1452,7 @@ export default function AdminPage() {
                     <input type="number" value={resetHours} onChange={e => setResetHours(Number(e.target.value))} min={1} max={168}
                       className="w-20 rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-900 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-zinc-500" />
                   </div>
-                  <button onClick={resetChapter} disabled={resetting || !chapter}
+                  <button onClick={resetEpisode} disabled={resetting || !chapter}
                     className="mt-2 rounded bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-500 disabled:opacity-40 dark:bg-red-900 dark:hover:bg-red-800">
                     {resetting ? 'Resetting…' : 'Reset Chapter'}
                   </button>
@@ -1461,8 +1461,8 @@ export default function AdminPage() {
                 <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
                   <p className="mb-2 text-xs text-zinc-500">
                     Full game reset — retires all tally caches, increments reset_version (new NFT taxon generation),
-                    and clears the active chapter. Use after distributing NFTs at the end of a universe run.
-                    Make a chapter live afterward to start the next round.
+                    and clears the active episode. Use after distributing NFTs at the end of a universe run.
+                    Make an episode live afterward to start the next round.
                   </p>
                   <button onClick={resetFullGame} disabled={resettingGame}
                     className="rounded bg-red-800 px-3 py-1.5 text-xs text-white hover:bg-red-700 disabled:opacity-40 dark:bg-red-950 dark:hover:bg-red-900">

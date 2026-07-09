@@ -13,7 +13,7 @@ const activeNavLink = 'text-xs uppercase tracking-widest text-zinc-700 dark:text
 function AdminNav() {
   const pathname = usePathname()
   const links = [
-    { href: '/admin', label: 'Chapters' },
+    { href: '/admin', label: 'Episodes' },
     { href: '/admin/clues', label: 'Clues' },
   ]
   return (

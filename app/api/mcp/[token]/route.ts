@@ -154,8 +154,8 @@ function buildServer() {
   // ── Chapters & Story ────────────────────────────────────────────────────────
 
   server.tool(
-    'create_chapter',
-    'Create a new chapter in a universe with voting choices. Chapter number is assigned automatically.',
+    'create_episode',
+    'Create a new episode in a universe with voting choices. Episode number is assigned automatically.',
     {
       universe_id: z.string().describe('e.g. U001'),
       chapter_label: z.string().describe('Display title, e.g. "Chapter 1 · The Star of Alexandria"'),
@@ -204,8 +204,8 @@ function buildServer() {
   )
 
   server.tool(
-    'update_chapter_metadata',
-    'Update a chapter\'s label, prompt, choices, or voting deadline. Only provided fields are changed.',
+    'update_episode_metadata',
+    'Update an episode\'s label, prompt, choices, or voting deadline. Only provided fields are changed.',
     {
       choice_point: z.string().describe('e.g. U001:C01:CP1'),
       chapter_label: z.string().optional(),
@@ -237,8 +237,8 @@ function buildServer() {
   )
 
   server.tool(
-    'list_chapters',
-    'List all chapters across all universes with their status and metadata.',
+    'list_episodes',
+    'List all episodes across all universes with their status and metadata.',
     { universe_id: z.string().optional().describe('Filter to a specific universe, e.g. U001') },
     async ({ universe_id }) => {
       const [chaptersResult, universesResult] = await Promise.all([
@@ -266,8 +266,8 @@ function buildServer() {
   )
 
   server.tool(
-    'get_chapter_story',
-    'Get a chapter with all its story content: story text, choice intro, outcome texts, and epilogue.',
+    'get_episode_story',
+    'Get an episode with all its story content: story text, choice intro, outcome texts, and epilogue.',
     { choice_point: z.string().describe('e.g. U001:C01:CP1') },
     async ({ choice_point }) => {
       const result = await dynamo.send(new GetCommand({ TableName: CHAPTERS_TABLE, Key: { choice_point } }))
@@ -296,8 +296,8 @@ function buildServer() {
   )
 
   server.tool(
-    'update_chapter_content',
-    'Write story content for a chapter. Type determines which section is updated.',
+    'update_episode_content',
+    'Write story content for an episode. Type determines which section is updated.',
     {
       choice_point: z.string().describe('e.g. U001:C01:CP1'),
       type: z.enum(['story', 'choice_intro', 'choice_outcome', 'epilogue']),
