@@ -22,7 +22,7 @@ export interface ChapterData {
   next_chapter_due_at: string
   story_key?: string
   choice_intro_key?: string
-  choice_outcomes?: Record<string, string>  // { A: 'U001/C01/outcome_A.md', ... }
+  choice_outcomes?: Record<string, string>  // { A: 'U001/E01/outcome_A.md', ... }
   epilogue_key?: string
   winning_choice?: string
   final_tally?: Record<string, number>

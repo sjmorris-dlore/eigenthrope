@@ -100,7 +100,7 @@ function buildServer() {
       is_false_lead: z.boolean().default(false),
       prerequisites: z.array(z.string()).default([]).describe('clue_ids that should be discovered first'),
       reveal_triggers: z.array(z.object({
-        choice_point: z.string().describe('e.g. U001:C01:CP1'),
+        choice_point: z.string().describe('e.g. U001:E01:CP1'),
         winning_choice: z.string().describe('e.g. A or B'),
       })).default([]),
       notes: z.string().default(''),
@@ -207,7 +207,7 @@ function buildServer() {
     'update_episode_metadata',
     'Update an episode\'s label, prompt, choices, or voting deadline. Only provided fields are changed.',
     {
-      choice_point: z.string().describe('e.g. U001:C01:CP1'),
+      choice_point: z.string().describe('e.g. U001:E01:CP1'),
       chapter_label: z.string().optional(),
       prompt: z.string().optional(),
       choices: z.record(z.string(), z.object({
@@ -268,7 +268,7 @@ function buildServer() {
   server.tool(
     'get_episode_story',
     'Get an episode with all its story content: story text, choice intro, outcome texts, and epilogue.',
-    { choice_point: z.string().describe('e.g. U001:C01:CP1') },
+    { choice_point: z.string().describe('e.g. U001:E01:CP1') },
     async ({ choice_point }) => {
       const result = await dynamo.send(new GetCommand({ TableName: CHAPTERS_TABLE, Key: { choice_point } }))
       if (!result.Item) return { content: [{ type: 'text', text: `Chapter ${choice_point} not found.` }] }
@@ -299,7 +299,7 @@ function buildServer() {
     'update_episode_content',
     'Write story content for an episode. Type determines which section is updated.',
     {
-      choice_point: z.string().describe('e.g. U001:C01:CP1'),
+      choice_point: z.string().describe('e.g. U001:E01:CP1'),
       type: z.enum(['story', 'choice_intro', 'choice_outcome', 'epilogue']),
       content: z.string().describe('Markdown text to save'),
       choice_id: z.string().optional().describe('Required when type is choice_outcome — e.g. A or B'),
