@@ -98,6 +98,14 @@ export async function POST() {
           UpdateExpression: 'REMOVE #v',
           ExpressionAttributeNames: { '#v': 'value' },
         })),
+
+    // Clear previous chapter so the conclusion card doesn't show after reset
+    dynamo.send(new UpdateCommand({
+      TableName: 'eigenthrope_config',
+      Key: { key: 'previous_choice_point' },
+      UpdateExpression: 'REMOVE #v',
+      ExpressionAttributeNames: { '#v': 'value' },
+    })),
   ])
 
   return Response.json({
