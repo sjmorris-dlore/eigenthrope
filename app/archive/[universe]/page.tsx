@@ -3,8 +3,7 @@ import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText } from '@/lib/s3'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import ReactMarkdown from 'react-markdown'
-import type { Components } from 'react-markdown'
+import ArchiveChapterList from '@/app/components/ArchiveChapterList'
 
 // Revalidate every 5 minutes so NFT ownership stays reasonably fresh
 export const revalidate = 300
@@ -35,39 +34,6 @@ interface UniverseRecord {
   title: string
   status: string
   completed_at?: string
-}
-
-const storyComponents: Components = {
-  h1: ({ children }) => (
-    <p className="mb-4 mt-12 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400 first:mt-0">
-      {children}
-    </p>
-  ),
-  h2: ({ children }) => (
-    <p className="mb-4 mt-10 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
-      {children}
-    </p>
-  ),
-  p: ({ children }) => (
-    <p className="mb-5 text-base leading-7 text-zinc-800 last:mb-0 dark:text-zinc-200">
-      {children}
-    </p>
-  ),
-  strong: ({ children }) => (
-    <strong className="font-bold text-zinc-900 dark:text-zinc-100">{children}</strong>
-  ),
-  em: ({ children }) => (
-    <em className="italic text-zinc-600 dark:text-zinc-400">{children}</em>
-  ),
-  hr: () => <hr className="my-10 border-zinc-200 dark:border-zinc-800" />,
-}
-
-function StoryCard({ text }: { text: string }) {
-  return (
-    <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-10 text-left shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:px-12">
-      <ReactMarkdown components={storyComponents}>{text}</ReactMarkdown>
-    </div>
-  )
 }
 
 function shortAddress(addr: string) {
@@ -213,49 +179,15 @@ export default async function UniverseArchivePage({
         {chapters.length === 0 ? (
           <p className="italic text-zinc-400">No story content yet.</p>
         ) : (
-          <div className="flex flex-col gap-20">
-            {chapters.map((ch, i) => {
-              const winningLabel = ch.winning_choice
-                ? ch.choices[ch.winning_choice]?.label
-                : null
-
-              return (
-                <div key={ch.choice_point} className="flex flex-col gap-10">
-
-                  <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
-                    {ch.chapter_label}
-                  </p>
-
-                  {ch.story_text && <StoryCard text={ch.story_text} />}
-
-                  {winningLabel && (
-                    <div className="flex flex-col items-center gap-3 py-2">
-                      <div className="h-px w-12 bg-zinc-300 dark:bg-zinc-700" />
-                      <p className="text-xs italic text-zinc-400 dark:text-zinc-500">
-                        The observers chose: {winningLabel}
-                      </p>
-                      <div className="h-px w-12 bg-zinc-300 dark:bg-zinc-700" />
-                    </div>
-                  )}
-
-                  {ch.outcome_text && <StoryCard text={ch.outcome_text} />}
-
-                  {ch.epilogue_text && <StoryCard text={ch.epilogue_text} />}
-
-                  {i < chapters.length - 1 && (
-                    <div className="flex items-center gap-4">
-                      <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-                      <span className="text-[10px] uppercase tracking-widest text-zinc-300 dark:text-zinc-700">
-                        ✦
-                      </span>
-                      <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-                    </div>
-                  )}
-
-                </div>
-              )
-            })}
-          </div>
+          <ArchiveChapterList chapters={chapters.map(ch => ({
+            choice_point: ch.choice_point,
+            chapter_label: ch.chapter_label,
+            choices: ch.choices,
+            winning_choice: ch.winning_choice,
+            story_text: ch.story_text,
+            outcome_text: ch.outcome_text,
+            epilogue_text: ch.epilogue_text,
+          }))} />
         )}
 
         {/* Winner artifact holders */}
