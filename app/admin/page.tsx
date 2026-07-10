@@ -1489,7 +1489,15 @@ export default function AdminPage() {
                   <ActionStatus message={timerStatus} />
                 </div>
                 <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
-                  <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">Close Episode</p>
+                  <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                    Close Episode
+                    {chapter && (
+                      <span className="ml-2 font-normal text-zinc-400">
+                        {chapter.choice_point.split(':').slice(0, 2).join(':')}
+                        {chapter.chapter_label && ` · ${chapter.chapter_label}`}
+                      </span>
+                    )}
+                  </p>
                   <p className="mb-3 text-xs text-zinc-500">
                     Tallies on-chain votes, sets the winner, and marks the episode closed. Required before minting.
                   </p>
