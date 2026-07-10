@@ -404,15 +404,34 @@ export default function Vote({ account, onVoted }: VoteProps) {
           Observation woven into the ledger.
         </p>
         <p className="text-sm text-zinc-500">{choiceLabel}</p>
-        <p className="mt-2 max-w-xs text-sm text-zinc-400 dark:text-zinc-500">
-          The conclusion of the story will be revealed once all votes are in and tallied.
-        </p>
-        <button
-          onClick={() => { setVoted(null); setChangingVote(true) }}
-          className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
-        >
-          Change observation
-        </button>
+        {pendingAdvance ? (
+          <div className="mt-2 flex flex-col items-center gap-2">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">The voting has concluded.</p>
+            <button
+              onClick={() => {
+                setNav({ authorLinkUrl: pendingAdvance.author_link_url, authorLinkLabel: pendingAdvance.author_link_label })
+                setChapter(pendingAdvance)
+                setVoted(null)
+                setPendingAdvance(null)
+              }}
+              className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              See what happened →
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="mt-2 max-w-xs text-sm text-zinc-400 dark:text-zinc-500">
+              The conclusion of the story will be revealed once all votes are in and tallied.
+            </p>
+            <button
+              onClick={() => { setVoted(null); setChangingVote(true) }}
+              className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+            >
+              Change observation
+            </button>
+          </>
+        )}
       </div>
     )
   }
