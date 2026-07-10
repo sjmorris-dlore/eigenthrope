@@ -15,6 +15,13 @@ export default function RabbitHoleMenu() {
     return () => document.removeEventListener('click', handleClick)
   }, [])
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('open') === 'rabbithole' && ref.current) {
+      ref.current.open = true
+      ref.current.scrollIntoView({ block: 'center' })
+    }
+  }, [])
+
   return (
     <details ref={ref} className="group relative">
       <summary className="cursor-pointer list-none text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
