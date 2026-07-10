@@ -107,9 +107,10 @@ export async function GET(request: Request) {
   }
 
   // Deadline passed — compute final tally and close
-  const [universe, chap, cp] = choicePoint.split(':')
+  // Use stored universe/chapter fields, not key segments — they may differ after migrations.
+  const cp = choicePoint.split(':')[2]
   const resetVersion = await getResetVersion()
-  const finalTally = await computeFinalTally(vaultAddress, universe, chap, cp, resetVersion)
+  const finalTally = await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion)
 
   const total = Object.values(finalTally).reduce((a, b) => a + b, 0)
   const winningChoice = total > 0

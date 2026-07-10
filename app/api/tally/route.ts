@@ -86,7 +86,7 @@ export async function GET() {
   }
 
   const choicePoint = configItem.Item.value as string
-  const [universe, chapter, cp] = choicePoint.split(':')
+  const cp = choicePoint.split(':')[2]
 
   const chapterItem = await dynamo.send(new GetCommand({
     TableName: 'eigenthrope_chapters',
@@ -94,6 +94,9 @@ export async function GET() {
   }))
 
   const chapterData = chapterItem.Item as ChapterData | undefined
+  // Use stored fields, not key segments — they may differ after migrations.
+  const universe = chapterData?.universe
+  const chapter = chapterData?.chapter
 
   // Closed chapters return their canonical final tally — no chain query needed
   if (chapterData?.status === 'closed' && chapterData.final_tally) {
@@ -120,6 +123,9 @@ export async function GET() {
   }
 
   // Cache miss, stale, or wrong reset version — recompute from chain
+  if (!universe || !chapter) {
+    return Response.json({ error: 'Chapter data missing universe/chapter fields' }, { status: 500 })
+  }
   const counts = await computeTallyFromChain(vaultAddress, universe, chapter, cp, resetVersion)
 
   await dynamo.send(new PutCommand({
