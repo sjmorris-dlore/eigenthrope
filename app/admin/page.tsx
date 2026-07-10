@@ -31,6 +31,7 @@ interface ChapterData {
 
 interface TallyData {
   counts: Record<string, number>
+  voter_count?: number
   choices: Record<string, Choice>
   closed?: boolean
   winning_choice?: string
@@ -1102,6 +1103,7 @@ export default function AdminPage() {
     if (!confirm('Reset the entire game? This will:\n• Increment reset_version (old votes and NFT taxons are retired)\n• Clear all tally caches\n• Remove the active episode (site goes dormant until you make an episode live)\n\nThis cannot be undone.')) return
     setResettingGame(true)
     setResetGameStatus('')
+    setCloseStatus('')
     try {
       const res = await fetch('/api/admin/reset-game', { method: 'POST' })
       const data = await res.json()
@@ -1479,7 +1481,10 @@ export default function AdminPage() {
                   </p>
                   {tally && !tally.closed && (
                     <p className="mb-3 text-xs text-zinc-500">
-                      Current votes: <span className="font-medium text-zinc-700 dark:text-zinc-300">{total}</span>
+                      {tally.voter_count ?? 0} observer{(tally.voter_count ?? 0) !== 1 ? 's' : ''}
+                      {total !== (tally.voter_count ?? 0) && (
+                        <span className="ml-1 text-zinc-400">(weighted total: {total})</span>
+                      )}
                     </p>
                   )}
                   <button

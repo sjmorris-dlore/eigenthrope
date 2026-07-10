@@ -17,7 +17,7 @@ async function computeTallyFromChain(
   chapter: string,
   cp: string,
   resetVersion: number
-): Promise<Record<string, number>> {
+): Promise<{ counts: Record<string, number>; voter_count: number }> {
   const res = await fetch(XRPL_RPC, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -67,7 +67,7 @@ async function computeTallyFromChain(
   for (const { choice, weight } of Object.values(latestVote)) {
     counts[choice] = (counts[choice] ?? 0) + weight
   }
-  return counts
+  return { counts, voter_count: Object.keys(latestVote).length }
 }
 
 export async function GET() {
@@ -118,7 +118,12 @@ export async function GET() {
   if (cached.Item && (cached.Item.reset_version ?? 0) === resetVersion) {
     const age = Date.now() - new Date(cached.Item.last_updated).getTime()
     if (age < CACHE_TTL_MS) {
-      return Response.json({ counts: cached.Item.counts, choices: chapterData?.choices ?? {}, cached: true })
+      return Response.json({
+        counts: cached.Item.counts,
+        voter_count: cached.Item.voter_count ?? 0,
+        choices: chapterData?.choices ?? {},
+        cached: true,
+      })
     }
   }
 
@@ -126,19 +131,20 @@ export async function GET() {
   if (!universe || !chapter) {
     return Response.json({ error: 'Chapter data missing universe/chapter fields' }, { status: 500 })
   }
-  const counts = await computeTallyFromChain(vaultAddress, universe, chapter, cp, resetVersion)
+  const { counts, voter_count } = await computeTallyFromChain(vaultAddress, universe, chapter, cp, resetVersion)
 
   await dynamo.send(new PutCommand({
     TableName: TABLE,
     Item: {
       choice_point: choicePoint,
       counts,
+      voter_count,
       reset_version: resetVersion,
       last_updated: new Date().toISOString(),
     },
   }))
 
-  return Response.json({ counts, choices: chapterData?.choices ?? {}, cached: false })
+  return Response.json({ counts, voter_count, choices: chapterData?.choices ?? {}, cached: false })
 }
 
 export async function DELETE() {
