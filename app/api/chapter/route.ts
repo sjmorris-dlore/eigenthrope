@@ -43,6 +43,7 @@ export interface ChapterData {
     chapter_label: string
     winning_choice_label: string | null
     outcome_text: string | null
+    epilogue_text: string | null
   }
 }
 
@@ -80,12 +81,13 @@ export async function GET() {
     ? prevChapter.choice_outcomes?.[prevChapter.winning_choice]
     : undefined
 
-  const [profileItem, storyText, choiceIntroText, outcomeText, prevOutcomeText] = await Promise.all([
+  const [profileItem, storyText, choiceIntroText, outcomeText, prevOutcomeText, prevEpilogueText] = await Promise.all([
     dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'behavioral_profile' } })),
     chapter.story_key ? fetchStoryText(chapter.story_key) : Promise.resolve(null),
     chapter.choice_intro_key ? fetchStoryText(chapter.choice_intro_key) : Promise.resolve(null),
     winningOutcomeKey ? fetchStoryText(winningOutcomeKey) : Promise.resolve(null),
     prevWinningOutcomeKey ? fetchStoryText(prevWinningOutcomeKey) : Promise.resolve(null),
+    prevChapter?.epilogue_key ? fetchStoryText(prevChapter.epilogue_key) : Promise.resolve(null),
   ])
 
   const profile = (profileItem.Item?.value ?? {}) as Partial<BehavioralProfile>
@@ -98,6 +100,7 @@ export async function GET() {
       ? (prevChapter.choices?.[prevChapter.winning_choice]?.label ?? null)
       : null,
     outcome_text: resolve(prevOutcomeText) ?? null,
+    epilogue_text: resolve(prevEpilogueText) ?? null,
   } : undefined
 
   return Response.json({

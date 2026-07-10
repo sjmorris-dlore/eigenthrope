@@ -164,6 +164,9 @@ function ConclusionCard({
           ) : (
             <p className="text-sm italic text-zinc-500">The outcome is being written. Check back soon.</p>
           )}
+          {predecessor.epilogue_text && (
+            <ReactMarkdown components={storyComponents}>{predecessor.epilogue_text}</ReactMarkdown>
+          )}
           <button
             onClick={onAdvance}
             className="mt-8 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
