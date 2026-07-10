@@ -1477,6 +1477,11 @@ export default function AdminPage() {
                   <p className="mb-3 text-xs text-zinc-500">
                     Tallies on-chain votes, sets the winner, and marks the episode closed. Required before minting.
                   </p>
+                  {tally && !tally.closed && (
+                    <p className="mb-3 text-xs text-zinc-500">
+                      Current votes: <span className="font-medium text-zinc-700 dark:text-zinc-300">{total}</span>
+                    </p>
+                  )}
                   <button
                     onClick={closeEpisode}
                     disabled={closingEpisode || !chapter || chapter.status === 'closed'}
