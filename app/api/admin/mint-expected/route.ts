@@ -25,7 +25,10 @@ export async function GET(request: Request) {
   const chapter = chapterItem.Item as ChapterData | undefined
   if (!chapter) return Response.json({ error: 'Chapter not found' }, { status: 404 })
 
-  const [universe, chapterSeg, cp] = choicePoint.split(':')
+  // Use stored fields, not key segments — they may differ after migrations (e.g. "C01" vs "E01").
+  const [, , cp] = choicePoint.split(':')
+  const universe = chapter.universe
+  const chapterSeg = chapter.chapter
   const finalYieldPct = chapter.final_yield_pct ?? 0.18
   const winningChoice = chapter.winning_choice ?? null
 
