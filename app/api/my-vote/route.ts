@@ -25,13 +25,18 @@ export async function GET(request: NextRequest) {
   if (!configItem.Item) return Response.json({ choice: null }, { status: 200 })
 
   const choicePoint = configItem.Item.value as string
-  const [universe, chapter, cp] = choicePoint.split(':')
+  const cp = choicePoint.split(':')[2]
 
   const chapterItem = await dynamo.send(new GetCommand({
     TableName: 'eigenthrope_chapters',
     Key: { choice_point: choicePoint },
   }))
   const chapterData = chapterItem.Item as ChapterData | undefined
+
+  // Use the stored universe/chapter fields, not the choice_point key segments.
+  // The chapter field may differ from the key (e.g. "C01" vs "E01" after migration).
+  const universe = chapterData?.universe
+  const chapter = chapterData?.chapter
 
   // Scan the player's own account_tx for outgoing payments to the vault
   const res = await fetch(XRPL_RPC, {
