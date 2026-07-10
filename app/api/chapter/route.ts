@@ -38,6 +38,7 @@ export interface ChapterData {
   story_text?: string
   choice_intro_text?: string
   outcome_text?: string  // winning choice's outcome, only set when closed
+  epilogue_text?: string  // only set when closed
   predecessor?: {
     choice_point: string
     chapter_label: string
@@ -81,11 +82,12 @@ export async function GET() {
     ? prevChapter.choice_outcomes?.[prevChapter.winning_choice]
     : undefined
 
-  const [profileItem, storyText, choiceIntroText, outcomeText, prevOutcomeText, prevEpilogueText] = await Promise.all([
+  const [profileItem, storyText, choiceIntroText, outcomeText, epilogueText, prevOutcomeText, prevEpilogueText] = await Promise.all([
     dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'behavioral_profile' } })),
     chapter.story_key ? fetchStoryText(chapter.story_key) : Promise.resolve(null),
     chapter.choice_intro_key ? fetchStoryText(chapter.choice_intro_key) : Promise.resolve(null),
     winningOutcomeKey ? fetchStoryText(winningOutcomeKey) : Promise.resolve(null),
+    chapter.epilogue_key ? fetchStoryText(chapter.epilogue_key) : Promise.resolve(null),
     prevWinningOutcomeKey ? fetchStoryText(prevWinningOutcomeKey) : Promise.resolve(null),
     prevChapter?.epilogue_key ? fetchStoryText(prevChapter.epilogue_key) : Promise.resolve(null),
   ])
@@ -108,6 +110,7 @@ export async function GET() {
     story_text: resolve(storyText),
     choice_intro_text: resolve(choiceIntroText),
     outcome_text: resolve(outcomeText),
+    epilogue_text: resolve(epilogueText),
     predecessor,
   })
 }

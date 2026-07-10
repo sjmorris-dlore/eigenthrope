@@ -366,6 +366,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
             The outcome is being written. Check back soon.
           </p>
         )}
+        {chapter.epilogue_text && <StoryText text={chapter.epilogue_text} />}
       </div>
     )
   }
