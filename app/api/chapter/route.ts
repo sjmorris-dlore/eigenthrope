@@ -38,49 +38,73 @@ export interface ChapterData {
   story_text?: string
   choice_intro_text?: string
   outcome_text?: string  // winning choice's outcome, only set when closed
+  predecessor?: {
+    choice_point: string
+    chapter_label: string
+    winning_choice_label: string | null
+    outcome_text: string | null
+  }
 }
 
 export async function GET() {
-  const configItem = await dynamo.send(new GetCommand({
-    TableName: 'eigenthrope_config',
-    Key: { key: 'active_choice_point' },
-  }))
+  const [configItem, prevConfigItem] = await Promise.all([
+    dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'active_choice_point' } })),
+    dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'previous_choice_point' } })),
+  ])
 
   if (!configItem.Item) {
     return Response.json({ error: 'No active choice point' }, { status: 404 })
   }
 
   const choicePoint = configItem.Item.value as string
+  const prevChoicePoint = prevConfigItem.Item?.value as string | undefined
 
-  const chapterItem = await dynamo.send(new GetCommand({
-    TableName: 'eigenthrope_chapters',
-    Key: { choice_point: choicePoint },
-  }))
+  const [chapterItem, prevChapterItem] = await Promise.all([
+    dynamo.send(new GetCommand({ TableName: 'eigenthrope_chapters', Key: { choice_point: choicePoint } })),
+    prevChoicePoint
+      ? dynamo.send(new GetCommand({ TableName: 'eigenthrope_chapters', Key: { choice_point: prevChoicePoint } }))
+      : Promise.resolve(null),
+  ])
 
   if (!chapterItem.Item) {
     return Response.json({ error: 'Chapter not found' }, { status: 404 })
   }
 
   const chapter = chapterItem.Item as ChapterData
+  const prevChapter = prevChapterItem?.Item as ChapterData | undefined
 
   const winningOutcomeKey = chapter.winning_choice
     ? chapter.choice_outcomes?.[chapter.winning_choice]
     : undefined
+  const prevWinningOutcomeKey = prevChapter?.winning_choice
+    ? prevChapter.choice_outcomes?.[prevChapter.winning_choice]
+    : undefined
 
-  const [profileItem, storyText, choiceIntroText, outcomeText] = await Promise.all([
+  const [profileItem, storyText, choiceIntroText, outcomeText, prevOutcomeText] = await Promise.all([
     dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'behavioral_profile' } })),
     chapter.story_key ? fetchStoryText(chapter.story_key) : Promise.resolve(null),
     chapter.choice_intro_key ? fetchStoryText(chapter.choice_intro_key) : Promise.resolve(null),
     winningOutcomeKey ? fetchStoryText(winningOutcomeKey) : Promise.resolve(null),
+    prevWinningOutcomeKey ? fetchStoryText(prevWinningOutcomeKey) : Promise.resolve(null),
   ])
 
   const profile = (profileItem.Item?.value ?? {}) as Partial<BehavioralProfile>
   const resolve = (t: string | null) => t ? resolveConditionals(t, profile) : undefined
+
+  const predecessor = prevChapter ? {
+    choice_point: prevChoicePoint!,
+    chapter_label: prevChapter.chapter_label,
+    winning_choice_label: prevChapter.winning_choice
+      ? (prevChapter.choices?.[prevChapter.winning_choice]?.label ?? null)
+      : null,
+    outcome_text: resolve(prevOutcomeText) ?? null,
+  } : undefined
 
   return Response.json({
     ...chapter,
     story_text: resolve(storyText),
     choice_intro_text: resolve(choiceIntroText),
     outcome_text: resolve(outcomeText),
+    predecessor,
   })
 }

@@ -136,6 +136,47 @@ function PagedStory({
   )
 }
 
+function ConclusionCard({
+  predecessor,
+  onAdvance,
+}: {
+  predecessor: NonNullable<ChapterData['predecessor']>
+  onAdvance: () => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  return (
+    <div className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="flex items-center justify-between px-8 pt-6 sm:px-12">
+        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+          {predecessor.chapter_label} — Conclusion
+        </span>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+        >
+          {collapsed ? 'Read ↓' : 'Collapse ↑'}
+        </button>
+      </div>
+      {!collapsed && (
+        <div className="px-8 pb-10 pt-4 text-left sm:px-12">
+          {predecessor.outcome_text ? (
+            <ReactMarkdown components={storyComponents}>{predecessor.outcome_text}</ReactMarkdown>
+          ) : (
+            <p className="text-sm italic text-zinc-500">The outcome is being written. Check back soon.</p>
+          )}
+          <button
+            onClick={onAdvance}
+            className="mt-8 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+          >
+            Next Chapter →
+          </button>
+        </div>
+      )}
+      {collapsed && <div className="px-8 pb-6 sm:px-12" />}
+    </div>
+  )
+}
+
 export default function Vote({ account, onVoted }: VoteProps) {
   const { setNav } = useEpisodeNav()
   const [chapter, setChapter] = useState<ChapterData | null>(null)
@@ -147,6 +188,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
   const [myVote, setMyVote] = useState<{ choice: string; label: string | null } | null>(null)
   const [changingVote, setChangingVote] = useState(false)
   const [votingReady, setVotingReady] = useState(false)
+  const [conclusionVisible, setConclusionVisible] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const signRef = useRef<HTMLDivElement>(null)
 
@@ -192,6 +234,20 @@ export default function Vote({ account, onVoted }: VoteProps) {
     if (!chapter.story_text) { setVotingReady(true); return }
     const pages = splitPages(chapter.story_text)
     setVotingReady(pages.length <= 1)
+  }, [chapter])
+
+  // Show conclusion card only if the player was watching the predecessor chapter this session
+  useEffect(() => {
+    if (!chapter) return
+    if (chapter.predecessor) {
+      const prevKey = chapter.predecessor.choice_point
+      const lastSeen = sessionStorage.getItem('seen_chapter_key')
+      const dismissed = localStorage.getItem(`dismissed_conclusion_${prevKey}`)
+      if (lastSeen === prevKey && dismissed !== 'true') {
+        setConclusionVisible(true)
+      }
+    }
+    sessionStorage.setItem('seen_chapter_key', chapter.choice_point)
   }, [chapter])
 
   const castVote = async (choice: string) => {
@@ -348,7 +404,16 @@ export default function Vote({ account, onVoted }: VoteProps) {
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
         {episodeLabel(chapter.choice_point)}
       </p>
-      {chapter.story_text && (
+      {conclusionVisible && chapter.predecessor ? (
+        <ConclusionCard
+          predecessor={chapter.predecessor}
+          onAdvance={() => {
+            localStorage.setItem(`dismissed_conclusion_${chapter.predecessor!.choice_point}`, 'true')
+            setConclusionVisible(false)
+          }}
+        />
+      ) : null}
+      {!conclusionVisible && chapter.story_text && (
         <PagedStory
           key={myVote ? 'voted' : 'fresh'}
           text={chapter.story_text}
@@ -356,7 +421,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
           defaultCollapsed={!!myVote}
         />
       )}
-      {votingReady && account ? (
+      {!conclusionVisible && votingReady && account ? (
         myVote && !changingVote ? (
           // ── Compact "already voted" card ──────────────────────────────────
           <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
@@ -418,13 +483,13 @@ export default function Vote({ account, onVoted }: VoteProps) {
             )}
           </div>
         )
-      ) : votingReady ? (
+      ) : !conclusionVisible && votingReady ? (
         <div className="w-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-8 py-6 text-center dark:border-zinc-700 dark:bg-zinc-900">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Connect your Xaman wallet above to cast your vote and collapse the wave.
           </p>
         </div>
-      ) : (
+      ) : !conclusionVisible ? (
         <div className="w-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-8 py-6 text-center dark:border-zinc-700 dark:bg-zinc-900">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
             Collapse the Wave
@@ -433,7 +498,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
             Voting unlocks once you've read the full episode.
           </p>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
