@@ -238,18 +238,15 @@ export default function Vote({ account, onVoted }: VoteProps) {
     setVotingReady(pages.length <= 1)
   }, [chapter])
 
-  // Show conclusion card only if the player was watching the predecessor chapter this session
+  // Show conclusion card if the player voted in the predecessor chapter and hasn't dismissed it
   useEffect(() => {
-    if (!chapter) return
-    if (chapter.predecessor) {
-      const prevKey = chapter.predecessor.choice_point
-      const lastSeen = sessionStorage.getItem('seen_chapter_key')
-      const dismissed = localStorage.getItem(`dismissed_conclusion_${prevKey}`)
-      if (lastSeen === prevKey && dismissed !== 'true') {
-        setConclusionVisible(true)
-      }
+    if (!chapter?.predecessor) return
+    const prevKey = chapter.predecessor.choice_point
+    const votedPrev = localStorage.getItem(`voted_${prevKey}`)
+    const dismissed = localStorage.getItem(`dismissed_conclusion_${prevKey}`)
+    if (votedPrev === 'true' && dismissed !== 'true') {
+      setConclusionVisible(true)
     }
-    sessionStorage.setItem('seen_chapter_key', chapter.choice_point)
   }, [chapter])
 
   // While the player has voted and the chapter is still open, poll for the advance
@@ -311,6 +308,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
 
       if (s.signed) {
         clearInterval(intervalRef.current!)
+        localStorage.setItem(`voted_${chapter.choice_point}`, 'true')
         setVoted(choice)
         setChangingVote(false)
         setPending(null)

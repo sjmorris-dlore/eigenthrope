@@ -81,7 +81,7 @@ async function getUniverse(id: string): Promise<UniverseRecord | null> {
       Key: { universe_id: id.toUpperCase() },
     }))
     const item = result.Item as UniverseRecord | undefined
-    if (!item || item.status !== 'completed') return null
+    if (!item) return null
     return item
   } catch {
     return null
