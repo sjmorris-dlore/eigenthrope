@@ -31,6 +31,7 @@ export async function postDiscord(embed: DiscordEmbed): Promise<void> {
 const SITE_URL = 'https://eigenthrope.sjmorriswrites.com'
 
 export function chapterOpenedEmbed(
+  universe: string,
   chapterLabel: string,
   prompt: string,
   choices: Record<string, { label: string; description: string }>,
@@ -45,7 +46,7 @@ export function chapterOpenedEmbed(
   })
 
   return {
-    title: `🔍 ${chapterLabel} — Voting is Open`,
+    title: `🔍 ${universe} · ${chapterLabel} — Voting is Open`,
     description: `*${prompt}*\n\n${choiceLines}`,
     color: 0xFBBF24, // amber
     fields: [
@@ -57,6 +58,7 @@ export function chapterOpenedEmbed(
 }
 
 export function chapterClosedEmbed(
+  universe: string,
   chapterLabel: string,
   winningChoice: string | null,
   winningLabel: string | null,
@@ -73,7 +75,7 @@ export function chapterClosedEmbed(
     .join('\n')
 
   return {
-    title: `📖 ${chapterLabel} — The Observers Have Spoken`,
+    title: `📖 ${universe} · ${chapterLabel} — The Observers Have Spoken`,
     description: winningLabel
       ? `The community chose **${winningLabel}**.\n\nThe story continues.`
       : 'Voting has closed.',

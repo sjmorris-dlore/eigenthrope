@@ -228,6 +228,7 @@ export async function GET(request: Request) {
 
   const winningLabel = winningChoice ? chapter.choices?.[winningChoice]?.label ?? null : null
   await postDiscord(chapterClosedEmbed(
+    chapter.universe ?? choicePoint.split(':')[0],
     chapter.chapter_label ?? choicePoint,
     winningChoice,
     winningLabel,

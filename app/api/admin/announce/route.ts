@@ -26,6 +26,7 @@ export async function POST() {
   }
 
   await postDiscord(chapterOpenedEmbed(
+    chapter.universe ?? choicePoint.split(':')[0],
     chapter.chapter_label ?? choicePoint,
     chapter.prompt ?? '',
     chapter.choices ?? {},
