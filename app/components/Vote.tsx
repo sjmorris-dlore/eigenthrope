@@ -328,6 +328,9 @@ export default function Vote({ account, onVoted }: VoteProps) {
           Observation woven into the ledger.
         </p>
         <p className="text-sm text-zinc-500">{choiceLabel}</p>
+        <p className="mt-2 max-w-xs text-sm text-zinc-400 dark:text-zinc-500">
+          The conclusion of the story will be revealed once all votes are in and tallied.
+        </p>
         <button
           onClick={() => { setVoted(null); fetchMyVote() }}
           className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
@@ -358,12 +361,17 @@ export default function Vote({ account, onVoted }: VoteProps) {
           )}
           <ChapterTimer className="mt-2" />
           {myVote && (
-            <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">
-              Your current vote:{' '}
-              <span className="font-semibold text-zinc-600 dark:text-zinc-300">
-                {myVote.label ?? myVote.choice}
-              </span>
-            </p>
+            <div className="mt-3">
+              <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                Your current vote:{' '}
+                <span className="font-semibold text-zinc-600 dark:text-zinc-300">
+                  {myVote.label ?? myVote.choice}
+                </span>
+              </p>
+              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                The conclusion will be revealed once all votes are in and tallied.
+              </p>
+            </div>
           )}
           {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
           <p className="mt-5 rounded-lg bg-zinc-50 px-4 py-3 text-xs leading-5 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
