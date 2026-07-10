@@ -189,7 +189,9 @@ export default function Vote({ account, onVoted }: VoteProps) {
   const [changingVote, setChangingVote] = useState(false)
   const [votingReady, setVotingReady] = useState(false)
   const [conclusionVisible, setConclusionVisible] = useState(false)
+  const [pendingAdvance, setPendingAdvance] = useState<ChapterData | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const advancePollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const signRef = useRef<HTMLDivElement>(null)
 
   const fetchMyVote = useCallback(async () => {
@@ -249,6 +251,24 @@ export default function Vote({ account, onVoted }: VoteProps) {
     }
     sessionStorage.setItem('seen_chapter_key', chapter.choice_point)
   }, [chapter])
+
+  // While the player has voted and the chapter is still open, poll for the advance
+  useEffect(() => {
+    if (!myVote || !chapter || chapter.status === 'closed' || pendingAdvance) return
+    const currentKey = chapter.choice_point
+    advancePollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch('/api/chapter')
+        if (!res.ok) return
+        const data: ChapterData = await res.json()
+        if (data.choice_point !== currentKey) {
+          clearInterval(advancePollRef.current!)
+          setPendingAdvance(data)
+        }
+      } catch { /* ignore transient errors */ }
+    }, 10_000)
+    return () => { if (advancePollRef.current) clearInterval(advancePollRef.current) }
+  }, [myVote, chapter, pendingAdvance])
 
   const castVote = async (choice: string) => {
     if (!chapter) return
@@ -431,15 +451,33 @@ export default function Vote({ account, onVoted }: VoteProps) {
             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
               {myVote.label ?? myVote.choice}
             </p>
-            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-              The conclusion will be revealed once all votes are in and tallied.
-            </p>
-            <button
-              onClick={() => setChangingVote(true)}
-              className="mt-4 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
-            >
-              Change observation
-            </button>
+            {pendingAdvance ? (
+              <div className="mt-3">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">The voting has concluded.</p>
+                <button
+                  onClick={() => {
+                    setNav({ authorLinkUrl: pendingAdvance.author_link_url, authorLinkLabel: pendingAdvance.author_link_label })
+                    setChapter(pendingAdvance)
+                    setPendingAdvance(null)
+                  }}
+                  className="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+                >
+                  See what happened →
+                </button>
+              </div>
+            ) : (
+              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                The conclusion will be revealed once all votes are in and tallied.
+              </p>
+            )}
+            {!pendingAdvance && (
+              <button
+                onClick={() => setChangingVote(true)}
+                className="mt-4 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                Change observation
+              </button>
+            )}
           </div>
         ) : (
           // ── Full voting card ──────────────────────────────────────────────
