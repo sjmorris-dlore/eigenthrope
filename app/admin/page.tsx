@@ -981,13 +981,27 @@ export default function AdminPage() {
     setAnnouncing(false)
   }
 
-  async function closeEpisode() {
+  async function closeEpisode(force = false) {
     setClosingChapter(true)
     setCloseStatus('')
     try {
-      const res = await fetch('/api/admin/close-chapter', { method: 'POST' })
+      const res = await fetch('/api/admin/close-chapter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force }),
+      })
       const data = await res.json()
       if (res.ok) {
+        if (data.skipped === 'Deadline not yet reached') {
+          setClosingChapter(false)
+          const closes = data.closes_at ? new Date(data.closes_at).toLocaleTimeString() : 'unknown'
+          if (confirm(`Deadline not yet reached (closes at ${closes}). Force close anyway?`)) {
+            closeEpisode(true)
+          } else {
+            setCloseStatus('Cancelled.')
+          }
+          return
+        }
         if (data.skipped) setCloseStatus(`Skipped: ${data.skipped}`)
         else setCloseStatus(`Closed. Winner: ${data.winning_choice ?? 'none'} (yield ${((data.yield_pct ?? 0) * 100).toFixed(0)}%)`)
         await loadData()
@@ -1488,7 +1502,7 @@ export default function AdminPage() {
                     </p>
                   )}
                   <button
-                    onClick={closeEpisode}
+                    onClick={() => closeEpisode()}
                     disabled={closingEpisode || !chapter || chapter.status === 'closed'}
                     className="rounded bg-rose-700 px-3 py-1.5 text-xs text-white hover:bg-rose-600 disabled:opacity-40 dark:bg-rose-900 dark:hover:bg-rose-800"
                   >

@@ -79,6 +79,8 @@ export async function GET(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const force = new URL(request.url).searchParams.get('force') === 'true'
+
   const vaultAddress = process.env.EIGENTHROPE_VAULT_ADDRESS?.trim()
   if (!vaultAddress) {
     return Response.json({ error: 'EIGENTHROPE_VAULT_ADDRESS not set' }, { status: 500 })
@@ -102,7 +104,7 @@ export async function GET(request: Request) {
   if (!chapter) return Response.json({ skipped: 'Chapter not found' })
   if (chapter.status === 'closed') return Response.json({ skipped: 'Already closed' })
   if (!chapter.voting_closes_at) return Response.json({ skipped: 'No deadline set' })
-  if (new Date(chapter.voting_closes_at) > new Date()) {
+  if (!force && new Date(chapter.voting_closes_at) > new Date()) {
     return Response.json({ skipped: 'Deadline not yet reached', closes_at: chapter.voting_closes_at })
   }
 
