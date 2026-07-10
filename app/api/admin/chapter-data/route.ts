@@ -1,5 +1,6 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import type { BehavioralWeights } from '@/lib/behavioral'
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -25,7 +26,7 @@ export async function PATCH(request: Request) {
   const body = await request.json() as {
     choice_point: string
     chapter_label?: string
-    choices?: Record<string, { label: string; description: string }>
+    choices?: Record<string, { label: string; description: string; behavioral_weights?: BehavioralWeights }>
     prompt?: string
     winner_nft_uri?: string
     participation_nft_uri?: string

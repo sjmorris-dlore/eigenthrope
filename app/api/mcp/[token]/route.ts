@@ -151,6 +151,19 @@ function buildServer() {
     }
   )
 
+  server.tool(
+    'delete_clue',
+    'Permanently delete a clue from the library. Cannot be undone.',
+    { clue_id: z.string().describe('e.g. B1, E4') },
+    async ({ clue_id }) => {
+      const id = clue_id.trim().toUpperCase()
+      const existing = await dynamo.send(new GetCommand({ TableName: CLUES_TABLE, Key: { clue_id: id } }))
+      if (!existing.Item) return { content: [{ type: 'text', text: `Clue ${id} not found.` }] }
+      await dynamo.send(new DeleteCommand({ TableName: CLUES_TABLE, Key: { clue_id: id } }))
+      return { content: [{ type: 'text', text: `Deleted clue ${id}.` }] }
+    }
+  )
+
   // ── Chapters & Story ────────────────────────────────────────────────────────
 
   server.tool(

@@ -1,7 +1,8 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText } from '@/lib/s3'
-import type { BehavioralWeights } from '@/lib/behavioral'
+import type { BehavioralWeights, BehavioralProfile } from '@/lib/behavioral'
+import { resolveConditionals } from '@/lib/conditional'
 
 export interface Choice {
   label: string
@@ -66,16 +67,20 @@ export async function GET() {
     ? chapter.choice_outcomes?.[chapter.winning_choice]
     : undefined
 
-  const [storyText, choiceIntroText, outcomeText] = await Promise.all([
+  const [profileItem, storyText, choiceIntroText, outcomeText] = await Promise.all([
+    dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'behavioral_profile' } })),
     chapter.story_key ? fetchStoryText(chapter.story_key) : Promise.resolve(null),
     chapter.choice_intro_key ? fetchStoryText(chapter.choice_intro_key) : Promise.resolve(null),
     winningOutcomeKey ? fetchStoryText(winningOutcomeKey) : Promise.resolve(null),
   ])
 
+  const profile = (profileItem.Item?.value ?? {}) as Partial<BehavioralProfile>
+  const resolve = (t: string | null) => t ? resolveConditionals(t, profile) : undefined
+
   return Response.json({
     ...chapter,
-    story_text: storyText ?? undefined,
-    choice_intro_text: choiceIntroText ?? undefined,
-    outcome_text: outcomeText ?? undefined,
+    story_text: resolve(storyText),
+    choice_intro_text: resolve(choiceIntroText),
+    outcome_text: resolve(outcomeText),
   })
 }

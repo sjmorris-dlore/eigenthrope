@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { z } from 'zod'
-import { ScanCommand, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { ScanCommand, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText, putStoryText } from '@/lib/s3'
 import type { Clue } from '@/lib/clues'
@@ -127,6 +127,19 @@ function buildServer() {
       }
       await dynamo.send(new PutCommand({ TableName: CLUES_TABLE, Item: updated }))
       return { content: [{ type: 'text', text: `Updated clue ${updated.clue_id}.` }] }
+    }
+  )
+
+  server.tool(
+    'delete_clue',
+    'Permanently delete a clue from the library. Cannot be undone.',
+    { clue_id: z.string().describe('e.g. B1, E4') },
+    async ({ clue_id }) => {
+      const id = clue_id.trim().toUpperCase()
+      const existing = await dynamo.send(new GetCommand({ TableName: CLUES_TABLE, Key: { clue_id: id } }))
+      if (!existing.Item) return { content: [{ type: 'text', text: `Clue ${id} not found.` }] }
+      await dynamo.send(new DeleteCommand({ TableName: CLUES_TABLE, Key: { clue_id: id } }))
+      return { content: [{ type: 'text', text: `Deleted clue ${id}.` }] }
     }
   )
 

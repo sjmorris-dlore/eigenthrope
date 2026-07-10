@@ -401,19 +401,41 @@ function BehavioralWeightGrid({
   onChange: (next: BehavioralWeights) => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const nonZeroCount = BEHAVIORAL_TRAITS.filter(t => (weights[t] ?? 0) !== 0).length
+  const nonZero = BEHAVIORAL_TRAITS.filter(t => (weights[t] ?? 0) !== 0)
 
   return (
-    <div className="mt-1">
+    <div className="mt-2">
+      {/* Badge summary — always visible when weights are set */}
+      {nonZero.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          {nonZero.map(trait => {
+            const val = weights[trait]!
+            return (
+              <span
+                key={trait}
+                className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-medium ${
+                  val > 0
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+                    : 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+                }`}
+              >
+                {trait} {val > 0 ? `+${val}` : val}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
         className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
       >
-        Behavioral weights{nonZeroCount > 0 ? ` · ${nonZeroCount} set` : ''} {expanded ? '▲' : '▼'}
+        {expanded ? 'Hide weights ▲' : nonZero.length === 0 ? 'Set behavioral weights ▼' : 'Edit weights ▼'}
       </button>
+
       {expanded && (
-        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
+        <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5">
           {BEHAVIORAL_TRAITS.map(trait => {
             const val = weights[trait] ?? 0
             return (
@@ -1529,17 +1551,7 @@ export default function AdminPage() {
               </div>
             </Section>
 
-            <Section title="Tools">
-              <a
-                href="/admin/clues"
-                className="inline-flex items-center gap-2 rounded border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                <span>Clue Library</span>
-                <span className="text-zinc-400">→</span>
-              </a>
-            </Section>
-
-            <Section title="Behavioral Profile">
+<Section title="Behavioral Profile">
               <p className="mb-4 text-xs text-zinc-400 dark:text-zinc-600">
                 Accumulated observation data across all closed chapters. Updated automatically when a chapter closes.
               </p>
