@@ -1,4 +1,4 @@
-import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion } from '@/lib/config'
 import type { ChapterData } from '@/app/api/chapter/route'
@@ -139,4 +139,19 @@ export async function GET() {
   }))
 
   return Response.json({ counts, choices: chapterData?.choices ?? {}, cached: false })
+}
+
+export async function DELETE() {
+  const configItem = await dynamo.send(new GetCommand({
+    TableName: 'eigenthrope_config',
+    Key: { key: 'active_choice_point' },
+  }))
+  if (!configItem.Item) return Response.json({ ok: true })
+
+  const choicePoint = configItem.Item.value as string
+  await dynamo.send(new DeleteCommand({
+    TableName: TABLE,
+    Key: { choice_point: choicePoint },
+  }))
+  return Response.json({ ok: true })
 }

@@ -40,7 +40,10 @@ export default function App() {
         {/* Main reading column */}
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           {account && <ArtifactClaim key={account} account={account} onClaimed={() => setProfileEpoch(e => e + 1)} />}
-          <Vote key={account ?? 'anon'} account={account} onVoted={refreshTally} />
+          <Vote key={account ?? 'anon'} account={account} onVoted={() => {
+            fetch('/api/tally', { method: 'DELETE' }).finally(() => refreshTally())
+            setProfileEpoch(e => e + 1)
+          }} />
           <Tally tally={tally} />
         </div>
 
