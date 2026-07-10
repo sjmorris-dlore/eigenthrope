@@ -145,6 +145,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
   const [voted, setVoted] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [myVote, setMyVote] = useState<{ choice: string; label: string | null } | null>(null)
+  const [changingVote, setChangingVote] = useState(false)
   const [votingReady, setVotingReady] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const signRef = useRef<HTMLDivElement>(null)
@@ -235,6 +236,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
       if (s.signed) {
         clearInterval(intervalRef.current!)
         setVoted(choice)
+        setChangingVote(false)
         setPending(null)
         setQr(null)
         setSignUrl(null)
@@ -332,7 +334,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
           The conclusion of the story will be revealed once all votes are in and tallied.
         </p>
         <button
-          onClick={() => { setVoted(null); fetchMyVote() }}
+          onClick={() => { setVoted(null); setChangingVote(true) }}
           className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
         >
           Change observation
@@ -347,53 +349,75 @@ export default function Vote({ account, onVoted }: VoteProps) {
         {episodeLabel(chapter.choice_point)}
       </p>
       {chapter.story_text && (
-        <PagedStory text={chapter.story_text} onReadyChange={setVotingReady} />
+        <PagedStory
+          key={myVote ? 'voted' : 'fresh'}
+          text={chapter.story_text}
+          onReadyChange={setVotingReady}
+          defaultCollapsed={!!myVote}
+        />
       )}
       {votingReady && account ? (
-        <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
-            Collapse the Wave
-          </p>
-          {chapter.choice_intro_text && (
-            <div className="mt-1">
-              <ReactMarkdown components={storyComponents}>{chapter.choice_intro_text}</ReactMarkdown>
-            </div>
-          )}
-          <ChapterTimer className="mt-2" />
-          {myVote && (
-            <div className="mt-3">
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                Your current vote:{' '}
-                <span className="font-semibold text-zinc-600 dark:text-zinc-300">
-                  {myVote.label ?? myVote.choice}
-                </span>
-              </p>
-              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                The conclusion will be revealed once all votes are in and tallied.
-              </p>
-            </div>
-          )}
-          {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
-          <p className="mt-5 rounded-lg bg-zinc-50 px-4 py-3 text-xs leading-5 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-            Signing a vote sends 1 drop of XRP, or 0.000001 XRP, to the Eigenthrope vault and pays
-            the tiny XRPL network fee shown in Xaman. If 1 XRP were worth $1, 1 drop would be
-            $0.000001.
-          </p>
-          <div className="mt-6 flex flex-col gap-3">
-            {Object.entries(chapter.choices).map(([id, choice]) => (
-              <button
-                key={id}
-                onClick={() => castVote(id)}
-                disabled={pending !== null}
-                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 text-left transition-colors hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Choice {id}</span>
-                <span className="font-medium text-zinc-900 dark:text-zinc-50">{choice.label}</span>
-                <span className="text-sm text-zinc-500 dark:text-zinc-400">{choice.description}</span>
-              </button>
-            ))}
+        myVote && !changingVote ? (
+          // ── Compact "already voted" card ──────────────────────────────────
+          <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+              Collapse the Wave
+            </p>
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+              {myVote.label ?? myVote.choice}
+            </p>
+            <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+              The conclusion will be revealed once all votes are in and tallied.
+            </p>
+            <button
+              onClick={() => setChangingVote(true)}
+              className="mt-4 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+            >
+              Change observation
+            </button>
           </div>
-        </div>
+        ) : (
+          // ── Full voting card ──────────────────────────────────────────────
+          <div className="w-full rounded-xl border border-zinc-200 bg-white px-8 py-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+              Collapse the Wave
+            </p>
+            {chapter.choice_intro_text && (
+              <div className="mt-1">
+                <ReactMarkdown components={storyComponents}>{chapter.choice_intro_text}</ReactMarkdown>
+              </div>
+            )}
+            <ChapterTimer className="mt-2" />
+            {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+            <p className="mt-5 rounded-lg bg-zinc-50 px-4 py-3 text-xs leading-5 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+              Signing a vote sends 1 drop of XRP, or 0.000001 XRP, to the Eigenthrope vault and pays
+              the tiny XRPL network fee shown in Xaman. If 1 XRP were worth $1, 1 drop would be
+              $0.000001.
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              {Object.entries(chapter.choices).map(([id, choice]) => (
+                <button
+                  key={id}
+                  onClick={() => castVote(id)}
+                  disabled={pending !== null}
+                  className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 text-left transition-colors hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">Choice {id}</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-50">{choice.label}</span>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">{choice.description}</span>
+                </button>
+              ))}
+            </div>
+            {myVote && (
+              <button
+                onClick={() => setChangingVote(false)}
+                className="mt-4 text-xs text-zinc-400 underline hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )
       ) : votingReady ? (
         <div className="w-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-8 py-6 text-center dark:border-zinc-700 dark:bg-zinc-900">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
