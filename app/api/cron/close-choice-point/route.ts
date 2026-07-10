@@ -110,9 +110,24 @@ export async function GET(request: Request) {
   // Use stored universe/chapter fields, not key segments — they may differ after migrations.
   const cp = choicePoint.split(':')[2]
   const resetVersion = await getResetVersion()
-  const finalTally = await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion)
+  let finalTally = await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion)
 
-  const total = Object.values(finalTally).reduce((a, b) => a + b, 0)
+  let total = Object.values(finalTally).reduce((a, b) => a + b, 0)
+  if (total === 0) {
+    console.error(
+      `[close-chapter] XRPL returned 0 matching votes for ${choicePoint} ` +
+      `(universe=${chapter.universe} chapter=${chapter.chapter} cp=${cp} rv=${resetVersion}). ` +
+      `Retrying in 5s...`
+    )
+    await new Promise(r => setTimeout(r, 5000))
+    finalTally = await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion)
+    total = Object.values(finalTally).reduce((a, b) => a + b, 0)
+    if (total === 0) {
+      console.error(`[close-chapter] Retry also returned 0 votes. Proceeding with empty tally.`)
+    } else {
+      console.log(`[close-chapter] Retry succeeded — found ${total} vote(s).`)
+    }
+  }
   const winningChoice = total > 0
     ? Object.entries(finalTally).sort((a, b) => b[1] - a[1])[0][0]
     : null
