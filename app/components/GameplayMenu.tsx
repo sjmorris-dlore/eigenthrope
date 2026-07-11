@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useRef, useEffect } from 'react'
 
 export default function GameplayMenu({ inline = false }: { inline?: boolean }) {
@@ -56,14 +55,6 @@ export default function GameplayMenu({ inline = false }: { inline?: boolean }) {
             <p className="mt-1">Artifacts are standard XRP Ledger NFTs. Hold them to build Resonance or trade them on any XRPL NFT marketplace.</p>
           </div>
         </div>
-        </div>
-        <div className="border-t border-zinc-200 px-5 py-3 dark:border-zinc-800">
-          <Link
-            href="/wallet"
-            className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-          >
-            Manage artifacts →
-          </Link>
         </div>
       </div>
     </details>
