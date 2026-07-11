@@ -80,7 +80,7 @@ export default function TopNav() {
   const isAdmin = pathname.startsWith('/admin')
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 flex h-12 items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4 sm:px-8 dark:border-zinc-800 dark:bg-black">
+    <nav className="fixed inset-x-0 top-8 z-50 flex h-12 items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4 sm:px-8 dark:border-zinc-800 dark:bg-black">
       <div className="flex items-center gap-6">
         {isAdmin ? <AdminNav /> : <PlayerNav />}
       </div>
