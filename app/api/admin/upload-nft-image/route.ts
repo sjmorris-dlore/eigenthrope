@@ -3,7 +3,7 @@ import { dynamo } from '@/lib/dynamo'
 import { putImageFile, STORIES_BUCKET } from '@/lib/s3'
 
 function s3KeyForImage(choicePoint: string, type: string, ext: string) {
-  return `nft-images/${choicePoint.replace(/:/g, '/')}/${type}.${ext}`
+  return `nft-images/${choicePoint.replace(/:/g, '/')}/${type}-${Date.now()}.${ext}`
 }
 
 function extFromMime(mime: string) {
