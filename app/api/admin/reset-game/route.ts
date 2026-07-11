@@ -1,6 +1,8 @@
 import { DeleteCommand, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion, setResetVersion } from '@/lib/config'
+import { postDiscord, gameResetEmbed } from '@/lib/discord'
+import { scheduleBotReaction } from '@/lib/botTriggers'
 
 export async function POST() {
   const currentRv = await getResetVersion()
@@ -107,6 +109,16 @@ export async function POST() {
       ExpressionAttributeNames: { '#v': 'value' },
     })),
   ])
+
+  await postDiscord(gameResetEmbed(
+    'full',
+    firstChoicePoint
+      ? `The story has been reset back to the beginning. Voting is open again on **${firstChoicePoint}**.`
+      : 'The story has been reset back to the beginning.'
+  ))
+
+  // Let the observer bots know the game reset so they react and vote again
+  if (firstChoicePoint) await scheduleBotReaction('game_reset')
 
   return Response.json({
     ok: true,

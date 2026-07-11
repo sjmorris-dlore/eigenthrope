@@ -1,0 +1,12 @@
+# Fly.io config for the Eigenthrope observer bots.
+# This is a background worker (Discord Gateway WebSocket + DynamoDB poller) —
+# no HTTP services, and it must never auto-stop.
+app = "eigenthrope-bots"
+primary_region = "iad" # us-east-1 adjacency for DynamoDB/S3 latency
+
+[build]
+  dockerfile = "Dockerfile"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

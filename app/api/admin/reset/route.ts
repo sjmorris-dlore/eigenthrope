@@ -1,6 +1,8 @@
 import { DeleteCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion, setResetVersion } from '@/lib/config'
+import { postDiscord, gameResetEmbed } from '@/lib/discord'
+import { scheduleBotReaction } from '@/lib/botTriggers'
 
 export async function POST(request: Request) {
   const { voting_hours = 24 } = await request.json().catch(() => ({})) as { voting_hours?: number }
@@ -38,6 +40,17 @@ export async function POST(request: Request) {
       Key: { choice_point: choicePoint },
     })),
   ])
+
+  const deadlineLabel = new Date(deadline).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', timeZoneName: 'short',
+  })
+  await postDiscord(gameResetEmbed(
+    'chapter',
+    `Voting has been reset for **${choicePoint}**. New deadline: ${deadlineLabel}.`
+  ))
+
+  // Let the observer bots know voting reopened so they react and vote again
+  await scheduleBotReaction('game_reset')
 
   return Response.json({
     ok: true,

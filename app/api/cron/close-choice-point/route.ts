@@ -2,6 +2,7 @@ import { GetCommand, UpdateCommand, ScanCommand, PutCommand } from '@aws-sdk/lib
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion } from '@/lib/config'
 import { postDiscord, chapterClosedEmbed } from '@/lib/discord'
+import { scheduleBotReaction } from '@/lib/botTriggers'
 import type { ChapterData } from '@/app/api/chapter/route'
 import type { Clue } from '@/lib/clues'
 import { emptyProfile, accumulateWeights } from '@/lib/behavioral'
@@ -225,6 +226,9 @@ export async function GET(request: Request) {
     })))
   }
   await Promise.all(configWrites)
+
+  // Schedule the observer bots' in-character reaction (vesper_null in 2–4h)
+  await scheduleBotReaction('vote_close')
 
   const winningLabel = winningChoice ? chapter.choices?.[winningChoice]?.label ?? null : null
   await postDiscord(chapterClosedEmbed(

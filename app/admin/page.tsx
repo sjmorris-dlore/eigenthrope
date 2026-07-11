@@ -756,6 +756,30 @@ export default function AdminPage() {
   const [contentTab, setContentTab] = useState<'content' | 'library'>('content')
   const [behavioralProfile, setBehavioralProfile] = useState<Record<string, number> | null>(null)
 
+  const [testMode, setTestModeState] = useState(false)
+  const [testModeLoading, setTestModeLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/admin/test-mode')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setTestModeState(Boolean(data.test_mode)) })
+      .catch(() => {})
+  }, [])
+
+  async function toggleTestMode() {
+    const next = !testMode
+    setTestModeLoading(true)
+    try {
+      const res = await fetch('/api/admin/test-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      })
+      if (res.ok) setTestModeState(next)
+    } catch { /* leave state unchanged on failure */ }
+    setTestModeLoading(false)
+  }
+
   const loadData = useCallback(async () => {
     try {
       const [chapterRes, tallyRes] = await Promise.all([
@@ -1162,9 +1186,23 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-sm font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Admin</h1>
-          <button onClick={signOut} className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-400">
-            Sign out
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTestMode}
+              disabled={testModeLoading}
+              title="Speeds up observer bot reactions (minutes instead of hours) and shows the public reset-warning banner."
+              className={`rounded px-3 py-1.5 text-xs font-semibold uppercase tracking-wide disabled:opacity-40 ${
+                testMode
+                  ? 'bg-amber-500 text-amber-950 hover:bg-amber-400 dark:bg-amber-600 dark:text-amber-50 dark:hover:bg-amber-500'
+                  : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+              }`}
+            >
+              {testModeLoading ? '…' : `Test Mode: ${testMode ? 'ON' : 'OFF'}`}
+            </button>
+            <button onClick={signOut} className="text-xs text-zinc-400 hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-400">
+              Sign out
+            </button>
+          </div>
         </div>
 
         {/* Two-column grid */}

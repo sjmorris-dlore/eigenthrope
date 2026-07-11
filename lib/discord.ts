@@ -87,3 +87,12 @@ export function chapterClosedEmbed(
     timestamp: new Date().toISOString(),
   }
 }
+
+export function gameResetEmbed(scope: 'chapter' | 'full', detail: string): DiscordEmbed {
+  return {
+    title: scope === 'full' ? '🔄 Game Reset' : '🔄 Voting Reset',
+    description: detail,
+    color: 0x71717A, // zinc — administrative, distinct from the story-beat colors above
+    timestamp: new Date().toISOString(),
+  }
+}

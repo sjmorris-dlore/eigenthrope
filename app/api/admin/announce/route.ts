@@ -1,6 +1,7 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { postDiscord, chapterOpenedEmbed } from '@/lib/discord'
+import { scheduleBotReaction } from '@/lib/botTriggers'
 import type { ChapterData } from '@/app/api/chapter/route'
 
 export async function POST() {
@@ -32,6 +33,9 @@ export async function POST() {
     chapter.choices ?? {},
     chapter.voting_closes_at,
   ))
+
+  // Schedule the observer bots' in-character reaction (vesper_null in 2–4h)
+  await scheduleBotReaction('episode_open')
 
   return Response.json({ ok: true, choice_point: choicePoint })
 }
