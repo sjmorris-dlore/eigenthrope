@@ -39,8 +39,18 @@ export async function getCharacterState(name: CharacterName): Promise<CharacterS
     TableName: CONFIG_TABLE,
     Key: { key: stateKey(name) },
   }))
-  const item = res.Item as CharacterState | undefined
-  return item ?? { key: stateKey(name), working_theory: '', post_history: [] }
+  // Normalize per-field: the item may exist but be partial — the Next.js
+  // trigger routes create it with only pending_post via UpdateCommand SET.
+  const item = res.Item as Partial<CharacterState> | undefined
+  return {
+    key: stateKey(name),
+    working_theory: item?.working_theory ?? '',
+    post_history: item?.post_history ?? [],
+    history_summary: item?.history_summary,
+    last_posted_at: item?.last_posted_at,
+    pending_post: item?.pending_post,
+    last_voted: item?.last_voted,
+  }
 }
 
 export async function saveCharacterState(state: CharacterState): Promise<void> {
