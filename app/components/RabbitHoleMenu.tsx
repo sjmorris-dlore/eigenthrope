@@ -30,9 +30,9 @@ export default function RabbitHoleMenu({ inline = false }: { inline?: boolean })
 
       <div className={inline
         ? 'mt-2 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950'
-        : 'fixed left-2 right-2 top-14 z-50 rounded-xl border border-zinc-200 bg-zinc-50 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:w-96'
+        : 'fixed left-2 right-2 top-14 z-50 max-h-[calc(100vh-72px)] overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:max-h-[calc(100vh-100px)] sm:w-96'
       }>
-        <div className="max-h-[70vh] overflow-y-auto p-5">
+        <div className="p-5">
           <div className="space-y-5 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
 
             <div>
