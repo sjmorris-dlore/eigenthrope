@@ -1253,7 +1253,20 @@ export default function AdminPage() {
                       <span className="text-sm text-zinc-500">{chapter.chapter_label}</span>
                     )}
                   </div>
-                  <p className="text-sm italic text-zinc-500 dark:text-zinc-400">{chapter.prompt}</p>
+                  <div className="space-y-1.5">
+                    <textarea
+                      value={editingPrompt}
+                      onChange={e => setEditingPrompt(e.target.value)}
+                      rows={3}
+                      className={smallInputClass}
+                    />
+                    <div className="flex items-center gap-3">
+                      <button onClick={savePrompt} disabled={savingPrompt} className={smallBtnClass}>
+                        {savingPrompt ? 'Saving…' : 'Save Prompt'}
+                      </button>
+                      {promptStatus && <span className="text-[11px] text-zinc-400">{promptStatus}</span>}
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     {Object.entries(chapter.choices ?? {}).map(([id, c]) => {
                       const count = tally?.counts?.[id] ?? 0
