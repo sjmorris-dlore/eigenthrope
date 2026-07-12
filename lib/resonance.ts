@@ -1,4 +1,4 @@
-import { GetCommand } from '@aws-sdk/lib-dynamodb'
+import { BatchGetCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from './dynamo'
 import { getResetVersion } from './config'
 
@@ -74,6 +74,36 @@ async function countVotes(
   return participated.size
 }
 
+/**
+ * Which chapter (and type) an NFT belongs to, for dedupe: the mint Lambda
+ * records every token in eigenthrope_minting. Missing records fall back to
+ * the token's URI (chapter artifacts share their chapter's URI), then to the
+ * token id itself (no dedupe — counts individually).
+ */
+async function artifactIdentities(tokenIds: string[]): Promise<Map<string, string>> {
+  const identities = new Map<string, string>()
+  for (let i = 0; i < tokenIds.length; i += 100) {
+    const chunk = tokenIds.slice(i, i + 100)
+    try {
+      const res = await dynamo.send(new BatchGetCommand({
+        RequestItems: {
+          eigenthrope_minting: {
+            Keys: chunk.map(id => ({ nft_token_id: id })),
+            ProjectionExpression: 'nft_token_id, choice_point, artifact_type',
+          },
+        },
+      }))
+      for (const item of res.Responses?.eigenthrope_minting ?? []) {
+        const rec = item as { nft_token_id: string; choice_point?: string; artifact_type?: string }
+        if (rec.choice_point && rec.artifact_type) {
+          identities.set(rec.nft_token_id, `${rec.choice_point}#${rec.artifact_type}`)
+        }
+      }
+    } catch { /* fall back to URI/token-id keys below */ }
+  }
+  return identities
+}
+
 async function countArtifacts(
   account: string,
   vaultAddress: string,
@@ -90,17 +120,29 @@ async function countArtifacts(
     })
     const data = await res.json()
     const nfts: unknown[] = data.result?.account_nfts ?? []
-    let winners = 0
-    let participation = 0
     const wTaxon = winnerTaxon(resetVersion)
     const pTaxon = participationTaxon(resetVersion)
+
+    const matched: { id: string; uri?: string; type: 'winner' | 'participation' }[] = []
     for (const nft of nfts) {
       const n = nft as Record<string, unknown>
       if (n.Issuer !== vaultAddress) continue
-      if (n.NFTokenTaxon === wTaxon) winners++
-      else if (n.NFTokenTaxon === pTaxon) participation++
+      if (n.NFTokenTaxon === wTaxon) matched.push({ id: n.NFTokenID as string, uri: n.URI as string | undefined, type: 'winner' })
+      else if (n.NFTokenTaxon === pTaxon) matched.push({ id: n.NFTokenID as string, uri: n.URI as string | undefined, type: 'participation' })
     }
-    return { winners, participation }
+    if (matched.length === 0) return { winners: 0, participation: 0 }
+
+    // Duplicates of the same chapter's artifact score once: resonance counts
+    // distinct (chapter, type) pairs held, however they were acquired.
+    const identities = await artifactIdentities(matched.map(m => m.id))
+    const winnerSet = new Set<string>()
+    const participationSet = new Set<string>()
+    for (const m of matched) {
+      const key = identities.get(m.id) ?? (m.uri ? `uri:${m.uri}#${m.type}` : `token:${m.id}`)
+      if (m.type === 'winner') winnerSet.add(key)
+      else participationSet.add(key)
+    }
+    return { winners: winnerSet.size, participation: participationSet.size }
   } catch {
     return { winners: 0, participation: 0 }
   }

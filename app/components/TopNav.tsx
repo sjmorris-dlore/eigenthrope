@@ -76,6 +76,7 @@ export default function TopNav() {
               <div className="hidden items-center gap-6 sm:flex">
                 <Link href="/archive" className={navLink}>Archive</Link>
                 {/* Observers hidden for now — page still exists at /observers */}
+                <Link href="/leaderboard" className={navLink}>Leaderboard</Link>
                 <Link href="/wallet" className={navLink}>Artifacts</Link>
                 {DISCORD_URL && (
                   <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className={navLink}>
@@ -114,6 +115,7 @@ export default function TopNav() {
           <div className="flex flex-col gap-3 p-4">
             <Link href="/archive" onClick={() => setMobileOpen(false)} className={navLink}>Archive</Link>
             {/* Observers hidden for now — page still exists at /observers */}
+            <Link href="/leaderboard" onClick={() => setMobileOpen(false)} className={navLink}>Leaderboard</Link>
             <Link href="/wallet" onClick={() => setMobileOpen(false)} className={navLink}>Artifacts</Link>
             {DISCORD_URL && (
               <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className={navLink}>

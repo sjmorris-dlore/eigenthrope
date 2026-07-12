@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface XummState {
   me?: { account?: string }
+  jwt?: string
 }
 
 interface XummInstance {
@@ -14,7 +15,8 @@ interface XummInstance {
 }
 
 interface WalletConnectProps {
-  onAccountChange?: (account: string | null) => void
+  /** jwt is the Xaman session token — proof of wallet ownership for server writes */
+  onAccountChange?: (account: string | null, jwt?: string | null) => void
 }
 
 function OnboardingInstructions() {
@@ -130,9 +132,9 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
   const onAccountChangeRef = useRef(onAccountChange)
   useEffect(() => { onAccountChangeRef.current = onAccountChange })
 
-  const updateAccount = useCallback((value: string | null) => {
+  const updateAccount = useCallback((value: string | null, jwt?: string | null) => {
     setAccount(value)
-    onAccountChangeRef.current?.(value)
+    onAccountChangeRef.current?.(value, jwt)
   }, [])
 
   const setupXumm = useCallback(async () => {
@@ -145,23 +147,25 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
 
     const handleSession = async () => {
       let acct: string | null = null
+      let jwt: string | null = null
       for (let i = 0; i < 5 && !acct; i++) {
         if (i > 0) await new Promise(r => setTimeout(r, 400))
         const s = await xumm.state()
         acct = s?.me?.account ?? null
+        jwt = s?.jwt ?? null
       }
-      updateAccount(acct)
+      updateAccount(acct, jwt)
       setConnecting(false)
     }
 
     xumm.on('success', handleSession)
     xumm.on('retrieved', handleSession)
-    xumm.on('loggedout', () => { updateAccount(null); setConnecting(false) })
+    xumm.on('loggedout', () => { updateAccount(null, null); setConnecting(false) })
     xumm.on('error', () => { setConnecting(false) })
 
     const state = await xumm.state()
     if (state?.me?.account) {
-      updateAccount(state.me.account)
+      updateAccount(state.me.account, state.jwt ?? null)
     }
   }, [updateAccount])
 
@@ -179,7 +183,7 @@ export default function WalletConnect({ onAccountChange }: WalletConnectProps) {
       const acct = s?.me?.account ?? null
       if (acct) {
         clearInterval(interval)
-        updateAccount(acct)
+        updateAccount(acct, s?.jwt ?? null)
         setConnecting(false)
       }
     }, 1500)

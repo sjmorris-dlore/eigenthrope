@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import WalletConnect from '@/app/components/WalletConnect'
+import AliasForm from '@/app/components/AliasForm'
 
 const XRPL_RPC = 'https://xrplcluster.com/'
 const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS ?? 'rwU5e8C8sBjgDfuYwLGwTe9zAnf5TYxrsn'
@@ -42,6 +43,7 @@ async function fetchMetaName(uri: string): Promise<string | undefined> {
 
 export default function WalletPage() {
   const [account, setAccount] = useState<string | null>(null)
+  const [jwt, setJwt] = useState<string | null>(null)
   const [nfts, setNfts] = useState<NFTWithMeta[]>([])
   const [loading, setLoading] = useState(false)
   const [activeToken, setActiveToken] = useState<string | null>(null)
@@ -145,10 +147,11 @@ export default function WalletPage() {
           </h1>
         </div>
 
-        <WalletConnect onAccountChange={setAccount} />
+        <WalletConnect onAccountChange={(acct, token) => { setAccount(acct); setJwt(token ?? null) }} />
 
         {account && (
           <>
+            <AliasForm account={account} jwt={jwt} />
             {loading && (
               <p className="text-sm text-zinc-400">Loading…</p>
             )}

@@ -28,6 +28,7 @@ export default function PrivacyPage() {
             <li><span className="font-semibold text-zinc-900 dark:text-zinc-100">XRPL wallet address.</span> When you connect your Xaman wallet, your public XRP Ledger address is stored so the game can look up your votes, resonance score, and artifact eligibility. This address is public by design on the XRP Ledger.</li>
             <li><span className="font-semibold text-zinc-900 dark:text-zinc-100">On-chain vote data.</span> Each vote you cast is a transaction recorded on the XRP Ledger. That transaction — including your wallet address and your choice — is permanently and publicly visible on the ledger. We read this data to compute tallies and resonance scores.</li>
             <li><span className="font-semibold text-zinc-900 dark:text-zinc-100">NFT artifact records.</span> When an artifact is minted for you or claimed by you, we store the NFT token ID, offer ID, and your wallet address in our database to manage the claim flow.</li>
+            <li><span className="font-semibold text-zinc-900 dark:text-zinc-100">Display name (optional).</span> You may set a public display name for the leaderboard from the Artifacts page. It is shown alongside your wallet address, is entirely optional, and can be removed by you at any time. Without one, you appear by wallet address only.</li>
           </ul>
         </section>
 
