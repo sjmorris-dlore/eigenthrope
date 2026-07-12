@@ -4,6 +4,7 @@ import { fetchStoryText } from '@/lib/s3'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ArchiveChapterList from '@/app/components/ArchiveChapterList'
+import DiscordTicker from '@/app/components/DiscordTicker'
 
 // Revalidate every 5 minutes so NFT ownership stays reasonably fresh
 export const revalidate = 300
@@ -226,6 +227,7 @@ export default async function UniverseArchivePage({
         )}
 
       </main>
+      <DiscordTicker />
     </div>
   )
 }
