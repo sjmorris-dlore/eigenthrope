@@ -2,6 +2,7 @@
 
 interface TallyData {
   counts: Record<string, number>
+  voter_count?: number
   choices: Record<string, { label: string; description: string }>
 }
 
@@ -40,7 +41,9 @@ export default function Tally({ tally }: { tally: TallyData | null }) {
           )
         })}
         <p className="text-center text-xs text-zinc-400">
-          {total} observation{total !== 1 ? 's' : ''}
+          {typeof tally.voter_count === 'number'
+            ? `${tally.voter_count} observer${tally.voter_count !== 1 ? 's' : ''} · resonance ${total}`
+            : `resonance ${total}`}
         </p>
       </div>
     </div>

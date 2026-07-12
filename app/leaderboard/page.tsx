@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { getLeaderboard } from '@/lib/leaderboard'
 
 export const metadata = {
@@ -25,8 +26,11 @@ export default async function LeaderboardPage() {
             </h1>
             <p className="mt-3 text-base leading-7 text-zinc-500 dark:text-zinc-400">
               Resonance is standing: votes cast, artifacts held. It weights every
-              observation you make. Set a display name from the Artifacts page —
-              otherwise you appear by wallet.
+              observation you make. Set a display name on the{' '}
+              <Link href="/wallet" className="underline underline-offset-4 hover:text-zinc-700 dark:hover:text-zinc-200">
+                Artifacts page
+              </Link>{' '}
+              — otherwise you appear by wallet.
             </p>
           </div>
         </div>
@@ -41,16 +45,9 @@ export default async function LeaderboardPage() {
               <div key={e.account} className="flex items-center gap-4 py-5 first:pt-0">
                 <span className="w-8 text-right font-mono text-sm text-zinc-400">{i + 1}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                      {e.bot_name ?? e.alias ?? truncate(e.account)}
-                    </span>
-                    {e.bot_name && (
-                      <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
-                        observer
-                      </span>
-                    )}
-                  </div>
+                  <span className="block truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                    {e.bot_name ?? e.alias ?? truncate(e.account)}
+                  </span>
                   <a
                     href={`https://xrpscan.com/account/${e.account}`}
                     target="_blank"
