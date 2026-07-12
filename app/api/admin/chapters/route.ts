@@ -29,12 +29,13 @@ export async function POST(request: Request) {
   }))
 
   const maxNum = (existing.Items ?? []).reduce((max, c) => {
-    const n = parseInt((c.chapter as string).replace('C', '')) || 0
+    // Tolerate the retired C-prefix in old rows so numbering never restarts
+    const n = parseInt((c.chapter as string).replace(/^[CE]/, '')) || 0
     return Math.max(max, n)
   }, 0)
 
   const nextNum = maxNum + 1
-  const chapter = `C${String(nextNum).padStart(2, '0')}`
+  const chapter = `E${String(nextNum).padStart(2, '0')}`
   const choice_point = `${universe_id.toUpperCase()}:${chapter}:CP1`
   const deadline = new Date(Date.now() + voting_hours * 60 * 60 * 1000).toISOString()
 

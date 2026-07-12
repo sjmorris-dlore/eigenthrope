@@ -194,7 +194,7 @@ function ClueForm({
         <input
           value={form.reveal_triggers}
           onChange={e => set('reveal_triggers', e.target.value)}
-          placeholder="U001:C01:CP1/A, U001:C02:CP1/B"
+          placeholder="U001:E01:CP1/A, U001:E02:CP1/B"
           className={`${smallInputClass} font-mono`}
         />
       </div>
