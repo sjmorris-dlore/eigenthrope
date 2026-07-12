@@ -25,10 +25,20 @@ export async function scheduleBotReaction(trigger: BotTrigger): Promise<void> {
     game_which: trigger === 'vote_close' ? 'previous' : 'active',
   }
   try {
+    // Per-trigger slot: a vote_close commentary and the next episode_open
+    // reaction can both be in flight without clobbering each other.
+    // Two-step: the map must exist before a nested SET can target a key.
     await dynamo.send(new UpdateCommand({
       TableName: 'eigenthrope_config',
       Key: { key: 'character:vesper_null' },
-      UpdateExpression: 'SET pending_post = :p',
+      UpdateExpression: 'SET pending_posts = if_not_exists(pending_posts, :empty)',
+      ExpressionAttributeValues: { ':empty': {} },
+    }))
+    await dynamo.send(new UpdateCommand({
+      TableName: 'eigenthrope_config',
+      Key: { key: 'character:vesper_null' },
+      UpdateExpression: 'SET pending_posts.#t = :p',
+      ExpressionAttributeNames: { '#t': trigger },
       ExpressionAttributeValues: { ':p': pending },
     }))
     console.log(`[botTriggers] scheduled vesper_null ${trigger} reaction for ${pending.scheduled_for}${testMode ? ' (test mode)' : ''}`)

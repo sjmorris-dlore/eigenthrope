@@ -1,5 +1,5 @@
 import { CHARACTERS } from './characters.js'
-import { getCharacterState, claimPendingPost } from './state.js'
+import { getCharacterState, claimPendingPost, allPendingPosts } from './state.js'
 import { executePost } from './poster.js'
 import { claimPendingArtifacts } from './artifacts.js'
 import { getTestMode } from './story.js'
@@ -29,22 +29,29 @@ async function tick(): Promise<void> {
   for (const { name } of CHARACTERS) {
     try {
       const state = await getCharacterState(name)
-      const pending = state.pending_post
-      if (!pending) continue
-      const dueInMs = new Date(pending.scheduled_for).getTime() - Date.now()
-      if (dueInMs > 0) {
-        console.log(`[scheduler] ${name}: ${pending.trigger} post due in ${Math.ceil(dueInMs / 1000)}s`)
-        continue
+      // Due posts execute oldest-first so e.g. the vote_close commentary
+      // lands before the next episode_open reaction.
+      const pendings = allPendingPosts(state)
+        .sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for))
+
+      for (const pending of pendings) {
+        const dueInMs = new Date(pending.scheduled_for).getTime() - Date.now()
+        if (dueInMs > 0) {
+          console.log(`[scheduler] ${name}: ${pending.trigger} post due in ${Math.ceil(dueInMs / 1000)}s`)
+          continue
+        }
+
+        const isLegacy = state.pending_post?.scheduled_for === pending.scheduled_for &&
+          state.pending_post?.trigger === pending.trigger
+        const claimed = await claimPendingPost(name, pending, isLegacy)
+        if (!claimed) continue // another worker or a fresher schedule won
+
+        await executePost(name, {
+          trigger: pending.trigger,
+          triggerContext: pending.context,
+          gameWhich: pending.game_which,
+        })
       }
-
-      const claimed = await claimPendingPost(name, pending.scheduled_for)
-      if (!claimed) continue // another worker or a fresher schedule won
-
-      await executePost(name, {
-        trigger: pending.trigger,
-        triggerContext: pending.context,
-        gameWhich: pending.game_which,
-      })
     } catch (err) {
       console.error(`[scheduler] ${name} tick failed:`, err)
     }
