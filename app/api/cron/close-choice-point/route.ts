@@ -199,33 +199,13 @@ export async function GET(request: Request) {
     )
   }
 
-  // Auto-advance to the next chapter in sequence (sorted by chapter then universe)
-  const allChaptersResult = await dynamo.send(new ScanCommand({
-    TableName: 'eigenthrope_chapters',
-    ProjectionExpression: 'choice_point, #u, chapter',
-    ExpressionAttributeNames: { '#u': 'universe' },
+  // No auto-advance: the game stays on the closed chapter until the admin
+  // hits "Advance to Next Episode" (/api/admin/advance) — the gap is where
+  // NFTs get minted and distributed, so weights settle before the next vote.
+  await dynamo.send(new PutCommand({
+    TableName: 'eigenthrope_config',
+    Item: { key: 'previous_choice_point', value: choicePoint },
   }))
-  const allChapters = (allChaptersResult.Items ?? []) as { choice_point: string; universe: string; chapter: string }[]
-  const sorted = allChapters.sort((a, b) => {
-    const c = a.chapter.localeCompare(b.chapter)
-    return c !== 0 ? c : a.universe.localeCompare(b.universe)
-  })
-  const currentIdx = sorted.findIndex(c => c.choice_point === choicePoint)
-  const nextChapter = currentIdx >= 0 && currentIdx < sorted.length - 1 ? sorted[currentIdx + 1] : null
-
-  const configWrites: Promise<unknown>[] = [
-    dynamo.send(new PutCommand({
-      TableName: 'eigenthrope_config',
-      Item: { key: 'previous_choice_point', value: choicePoint },
-    })),
-  ]
-  if (nextChapter) {
-    configWrites.push(dynamo.send(new PutCommand({
-      TableName: 'eigenthrope_config',
-      Item: { key: 'active_choice_point', value: nextChapter.choice_point },
-    })))
-  }
-  await Promise.all(configWrites)
 
   // Schedule the observer bots' in-character reaction (vesper_null in 2–4h)
   await scheduleBotReaction('vote_close')

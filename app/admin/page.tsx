@@ -748,6 +748,8 @@ export default function AdminPage() {
   const [mintStatus, setMintStatus] = useState('')
   const [creatingOffers, setCreatingOffers] = useState(false)
   const [offerStatus, setOfferStatus] = useState('')
+  const [advancing, setAdvancing] = useState(false)
+  const [advanceStatus, setAdvanceStatus] = useState('')
   const [mintPollStatus, setMintPollStatus] = useState('')
   const [expectedMints, setExpectedMints] = useState<{ total: number; voters: number; winner_tier: number } | null>(null)
 
@@ -1151,6 +1153,21 @@ export default function AdminPage() {
       } else setResetGameStatus(`Error: ${data.error}`)
     } catch { setResetGameStatus('Error: Request failed.') }
     setResettingGame(false)
+  }
+
+  async function advanceEpisode() {
+    if (!confirm('Advance to the next episode? Do this after NFTs are distributed — new votes open against the next chapter.')) return
+    setAdvancing(true)
+    setAdvanceStatus('')
+    try {
+      const res = await fetch('/api/admin/advance', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        setAdvanceStatus(`Advanced to ${data.active_choice_point}. Announce when ready.`)
+        await loadData()
+      } else setAdvanceStatus(`Error: ${data.error}`)
+    } catch { setAdvanceStatus('Error: Request failed.') }
+    setAdvancing(false)
   }
 
   async function setTimer(isoString: string) {
@@ -1589,6 +1606,22 @@ export default function AdminPage() {
                   {mintPollStatus && (
                     <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{mintPollStatus}</p>
                   )}
+                </div>
+                <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
+                  <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">Advance to Next Episode</p>
+                  <p className="mb-3 text-xs text-zinc-500">
+                    Makes the next chapter in sequence the active episode. The game stays on the
+                    closed episode until you do this — distribute NFTs first so weights are settled,
+                    then advance, then Announce.
+                  </p>
+                  <button
+                    onClick={advanceEpisode}
+                    disabled={advancing || !chapter || chapter.status !== 'closed'}
+                    className="rounded bg-emerald-700 px-3 py-1.5 text-xs text-white hover:bg-emerald-600 disabled:opacity-40 dark:bg-emerald-900 dark:hover:bg-emerald-800"
+                  >
+                    {advancing ? 'Advancing…' : 'Advance to Next Episode'}
+                  </button>
+                  <ActionStatus message={advanceStatus} />
                 </div>
                 <div>
                   <p className="mb-2 text-xs text-zinc-500">
