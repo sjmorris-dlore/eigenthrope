@@ -23,7 +23,6 @@ export async function announceChapter(choicePoint: string): Promise<{ ok: boolea
     chapter.universe ?? choicePoint.split(':')[0],
     chapter.chapter_label ?? choicePoint,
     chapter.prompt ?? '',
-    chapter.choices ?? {},
     chapter.voting_closes_at,
   ))
 

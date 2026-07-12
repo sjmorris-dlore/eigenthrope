@@ -37,24 +37,21 @@ export async function postDiscord(embed: DiscordEmbed): Promise<void> {
 
 const SITE_URL = 'https://eigenthrope.sjmorriswrites.com'
 
+// The choices are deliberately NOT included — the announcement teases the
+// decision; players see their options on the site with the story.
 export function chapterOpenedEmbed(
   universe: string,
   chapterLabel: string,
   prompt: string,
-  choices: Record<string, { label: string; description: string }>,
   closesAt: string
 ): DiscordEmbed {
-  const choiceLines = Object.entries(choices)
-    .map(([id, c]) => `**${id}.** ${c.label} — *${c.description}*`)
-    .join('\n')
-
   const deadline = new Date(closesAt).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', timeZoneName: 'short',
   })
 
   return {
     title: `🔍 ${universe} · ${chapterLabel} — Voting is Open`,
-    description: `*${prompt}*\n\n${choiceLines}`,
+    description: `*${prompt}*`,
     color: 0xFBBF24, // amber
     fields: [
       { name: 'Voting closes', value: deadline },
