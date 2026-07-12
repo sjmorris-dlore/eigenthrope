@@ -1156,14 +1156,14 @@ export default function AdminPage() {
   }
 
   async function advanceEpisode() {
-    if (!confirm('Advance to the next episode? Do this after NFTs are distributed — new votes open against the next chapter.')) return
+    if (!confirm('Advance to the next episode? This activates it, sets a fresh 24h voting deadline, announces on Discord, and schedules the observer bots. Do this after NFTs are distributed.')) return
     setAdvancing(true)
     setAdvanceStatus('')
     try {
       const res = await fetch('/api/admin/advance', { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
-        setAdvanceStatus(`Advanced to ${data.active_choice_point}. Announce when ready.`)
+        setAdvanceStatus(`Advanced to ${data.active_choice_point} — announced, voting closes ${new Date(data.voting_closes_at).toLocaleString()}.`)
         await loadData()
       } else setAdvanceStatus(`Error: ${data.error}`)
     } catch { setAdvanceStatus('Error: Request failed.') }
@@ -1610,9 +1610,11 @@ export default function AdminPage() {
                 <div className="border-t border-zinc-200 pt-6 dark:border-zinc-800">
                   <p className="mb-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">Advance to Next Episode</p>
                   <p className="mb-3 text-xs text-zinc-500">
-                    Makes the next chapter in sequence the active episode. The game stays on the
-                    closed episode until you do this — distribute NFTs first so weights are settled,
-                    then advance, then Announce.
+                    Makes the next chapter in sequence live: activates it, sets a fresh 24h voting
+                    deadline, announces on Discord, and schedules the observer bots. The game stays
+                    on the closed episode until you do this — distribute NFTs first so weights are
+                    settled. (The separate Announce button is only for first episodes, post-reset
+                    starts, and re-announcing.)
                   </p>
                   <button
                     onClick={advanceEpisode}
