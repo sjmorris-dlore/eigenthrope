@@ -16,6 +16,12 @@ interface XrplNFT {
 
 interface NFTWithMeta extends XrplNFT {
   name?: string
+  /** Direct image URL from the NFT's own metadata (fallback) */
+  metaImage?: string
+  /** Game-side metadata from the minting records */
+  chapterLabel?: string
+  artifactType?: 'winner' | 'participation'
+  imageKey?: string
 }
 
 function decodeUri(hex: string | undefined): string | undefined {
@@ -27,17 +33,23 @@ function decodeUri(hex: string | undefined): string | undefined {
   }
 }
 
-async function fetchMetaName(uri: string): Promise<string | undefined> {
+function ipfsToHttp(uri: string): string {
+  return uri.startsWith('ipfs://')
+    ? `https://cloudflare-ipfs.com/ipfs/${uri.slice(7)}`
+    : uri
+}
+
+async function fetchNftMeta(uri: string): Promise<{ name?: string; image?: string }> {
   try {
-    const url = uri.startsWith('ipfs://')
-      ? `https://cloudflare-ipfs.com/ipfs/${uri.slice(7)}`
-      : uri
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
-    if (!res.ok) return undefined
+    const res = await fetch(ipfsToHttp(uri), { signal: AbortSignal.timeout(5000) })
+    if (!res.ok) return {}
     const json = await res.json()
-    return typeof json?.name === 'string' ? json.name : undefined
+    return {
+      name: typeof json?.name === 'string' ? json.name : undefined,
+      image: typeof json?.image === 'string' ? ipfsToHttp(json.image) : undefined,
+    }
   } catch {
-    return undefined
+    return {}
   }
 }
 
@@ -69,12 +81,30 @@ export default function WalletPage() {
       .then(async data => {
         const all: XrplNFT[] = data.result?.account_nfts ?? []
         const mine = all.filter(n => n.Issuer === VAULT_ADDRESS)
-        // Fetch names from metadata
+
+        // Game-side metadata (chapter, type, artifact image) in one call
+        const gameMeta: Record<string, { chapter_label?: string; artifact_type?: 'winner' | 'participation'; image_key?: string }> =
+          mine.length > 0
+            ? await fetch(`/api/artifact-meta?ids=${mine.map(n => n.NFTokenID).join(',')}`)
+                .then(r => (r.ok ? r.json() : { meta: {} }))
+                .then(d => d.meta ?? {})
+                .catch(() => ({}))
+            : {}
+
+        // NFT's own metadata as fallback for anything the game tables don't know
         const withMeta: NFTWithMeta[] = await Promise.all(
           mine.map(async n => {
+            const game = gameMeta[n.NFTokenID]
             const uri = decodeUri(n.URI)
-            const name = uri ? await fetchMetaName(uri) : undefined
-            return { ...n, name }
+            const own = uri && (!game || !game.image_key) ? await fetchNftMeta(uri) : {}
+            return {
+              ...n,
+              name: own.name,
+              metaImage: own.image,
+              chapterLabel: game?.chapter_label,
+              artifactType: game?.artifact_type,
+              imageKey: game?.image_key,
+            }
           })
         )
         setNfts(withMeta)
@@ -227,17 +257,43 @@ export default function WalletPage() {
                   const isActive = activeToken === nft.NFTokenID
                   const isBusy = activeToken !== null && !isActive
 
+                  const thumb = nft.imageKey
+                    ? `/api/nft-image?key=${encodeURIComponent(nft.imageKey)}`
+                    : nft.metaImage
+                  const typeLabel = nft.artifactType === 'winner' ? 'Winner Artifact'
+                    : nft.artifactType === 'participation' ? 'Participation Artifact'
+                    : undefined
+
                   return (
                     <div
                       key={nft.NFTokenID}
                       className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
                     >
-                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                        {nft.name ?? 'Eigenthrope Artifact'}
-                      </p>
-                      <p className="mt-0.5 font-mono text-[10px] text-zinc-400 break-all">
-                        {nft.NFTokenID}
-                      </p>
+                      <div className="flex items-start gap-3">
+                        {thumb && (
+                          <div className="h-24 w-14 shrink-0 overflow-hidden rounded-lg">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={thumb}
+                              alt={typeLabel ?? nft.name ?? 'Artifact'}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          {typeLabel && (
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                              {typeLabel}
+                            </p>
+                          )}
+                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                            {nft.chapterLabel ?? nft.name ?? 'Eigenthrope Artifact'}
+                          </p>
+                          <p className="mt-0.5 font-mono text-[10px] text-zinc-400 break-all">
+                            {nft.NFTokenID}
+                          </p>
+                        </div>
+                      </div>
 
                       {isActive && qr && signUrl ? (
                         <div className="mt-4 flex flex-col items-center gap-3">
