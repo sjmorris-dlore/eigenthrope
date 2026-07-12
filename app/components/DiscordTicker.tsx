@@ -26,6 +26,14 @@ interface Bubble {
 
 const SPAWN_INTERVAL_MS = 14_000
 const BUBBLE_LIFETIME_MS = 9_000
+const SNIPPET_MAX_WORDS = 8
+
+/** First few words of a post — the bubble is a teaser, not the full take. */
+function snippet(text: string): string {
+  const words = text.split(/\s+/)
+  if (words.length <= SNIPPET_MAX_WORDS) return text
+  return words.slice(0, SNIPPET_MAX_WORDS).join(' ') + ' …'
+}
 
 /**
  * TikTok-style Discord activity: observer posts (public by nature — the bots'
@@ -105,8 +113,8 @@ export default function DiscordTicker() {
               <span className="block text-[10px] font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">
                 💬 {b.author}
               </span>
-              <span className="mt-0.5 line-clamp-3 block text-xs leading-5 text-zinc-600 dark:text-zinc-300">
-                {b.text}
+              <span className="mt-0.5 block text-xs leading-5 text-zinc-600 dark:text-zinc-300">
+                {snippet(b.text ?? '')}
               </span>
             </span>
           ) : (
