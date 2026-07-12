@@ -58,7 +58,8 @@ export function chapterOpenedEmbed(
     color: 0xFBBF24, // amber
     fields: [
       { name: 'Voting closes', value: deadline },
-      { name: 'Cast your observation', value: SITE_URL },
+      { name: 'Read the story & vote', value: SITE_URL },
+      { name: 'Story archive', value: `${SITE_URL}/archive` },
     ],
     timestamp: new Date().toISOString(),
   }
@@ -89,7 +90,8 @@ export function chapterClosedEmbed(
     color: 0x6D28D9, // violet
     fields: [
       { name: 'Final tally', value: tallyLines || 'No votes recorded.' },
-      { name: 'Read what happens next', value: SITE_URL },
+      { name: 'Read the outcome', value: SITE_URL },
+      { name: 'Story archive', value: `${SITE_URL}/archive` },
     ],
     timestamp: new Date().toISOString(),
   }
