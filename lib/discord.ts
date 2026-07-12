@@ -1,4 +1,9 @@
-const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL
+// Announcements blast to every configured channel webhook: #announcements
+// (DISCORD_WEBHOOK_URL) and #current-story (DISCORD_STORY_WEBHOOK_URL).
+const WEBHOOK_URLS = [
+  process.env.DISCORD_WEBHOOK_URL,
+  process.env.DISCORD_STORY_WEBHOOK_URL,
+].filter((u): u is string => Boolean(u?.trim()))
 
 interface DiscordEmbed {
   title: string
@@ -10,22 +15,24 @@ interface DiscordEmbed {
 }
 
 export async function postDiscord(embed: DiscordEmbed): Promise<void> {
-  if (!WEBHOOK_URL) {
-    console.warn('[discord] DISCORD_WEBHOOK_URL not set — skipping notification')
+  if (WEBHOOK_URLS.length === 0) {
+    console.warn('[discord] no webhook URLs set — skipping notification')
     return
   }
-  try {
-    const res = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ embeds: [embed] }),
-    })
-    if (!res.ok) {
-      console.error(`[discord] webhook returned ${res.status}`)
+  await Promise.all(WEBHOOK_URLS.map(async (url) => {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] }),
+      })
+      if (!res.ok) {
+        console.error(`[discord] webhook returned ${res.status}`)
+      }
+    } catch (err) {
+      console.error('[discord] webhook failed:', err)
     }
-  } catch (err) {
-    console.error('[discord] webhook failed:', err)
-  }
+  }))
 }
 
 const SITE_URL = 'https://eigenthrope.sjmorriswrites.com'

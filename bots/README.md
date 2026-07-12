@@ -33,6 +33,20 @@ public working theories shown on the site's `/observers` page.
   continuity across test resets.
 - **@mentions** get an immediate in-character reply (2-min per-bot cooldown,
   bot-authored messages ignored to prevent loops). No vote on mention replies.
+- **Two channels.** #current-story (`EIGENTHROPE_STORY_CHANNEL_ID`) is where
+  the bots live: event reactions, peer responses, mentions, idle chatter,
+  emoji reactions. #theories (`EIGENTHROPE_THEORIES_CHANNEL_ID`, optional)
+  gets occasional bigger-picture theory posts — after a chapter closes (60%
+  chance, delayed hours) and from some idle rolls. Announcements from the
+  site go to both #announcements and #current-story webhooks.
+- **Non-linear behavior.** The first responder to a game event is chosen at
+  random from the roster; each other bot independently responds 30–90min
+  later — or stays silent (20%). Bots also post unprompted musings inside
+  per-character posting windows (vesper late-night UTC, amber daytime),
+  occasionally as story-adjacent personal tangents, capped by a minimum gap
+  since their last post. They sometimes drop an emoji reaction on player
+  messages (5%, 15-min cooldown) without posting. Idle/theory/mention posts
+  never vote.
 - **NFT claiming (pure code, no model involvement).** Every 30min (2min in
   test mode) the scheduler checks `eigenthrope_artifacts` for pending offers
   to bot addresses and accepts them — after verifying **on-ledger** that the

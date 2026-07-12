@@ -1,54 +1,64 @@
 import type { Message } from 'discord.js'
-import { CHARACTERS_BY_NAME, type CharacterName } from './characters.js'
+import { CHARACTERS, CHARACTERS_BY_NAME, type CharacterName } from './characters.js'
 import { generatePost, summarisePosts } from './claude.js'
 import { getRecentMessages, sendPost } from './discordBots.js'
-import { loadGameContext } from './story.js'
+import { getTestMode, loadGameContext } from './story.js'
 import {
   getCharacterState, saveCharacterState, schedulePendingPost,
   postsToSummarise, HISTORY_SUMMARISE_BATCH,
   type TriggerKind,
 } from './state.js'
 import { submitVote } from './xrplVote.js'
-import { AMBER_DRIFT_DELAY_MS_PROD, AMBER_DRIFT_DELAY_MS_TEST, randomDelay } from './config.js'
-import { getTestMode } from './story.js'
+import {
+  PEER_DELAY_MS_PROD, PEER_DELAY_MS_TEST, PEER_SILENCE_CHANCE,
+  THEORY_AFTER_CLOSE_CHANCE, THEORY_DELAY_MS_PROD, THEORY_DELAY_MS_TEST,
+  THEORIES_CHANNEL_ID, randomDelay, type ChannelKind,
+} from './config.js'
 
 export interface ExecuteOptions {
   trigger: TriggerKind
   triggerContext?: string
   gameWhich?: 'active' | 'previous'
+  channel?: ChannelKind
   /** For mention replies: the message to reply to */
   replyTo?: Message
 }
 
+/** Game-event triggers that start a response chain among the other observers */
+const CHAIN_TRIGGERS: ReadonlySet<TriggerKind> = new Set(['episode_open', 'vote_close', 'game_reset'])
+/** Triggers that never vote — conversation and musings, not game actions */
+const NO_VOTE_TRIGGERS: ReadonlySet<TriggerKind> = new Set(['mention', 'idle', 'theory'])
+
 /**
  * The full post pipeline: gather context → one Claude call → Discord post →
  * XRPL vote (if the chapter is open and this character hasn't voted) →
- * persist state → chain amber_drift's response if vesper_null posted.
+ * persist state → chain the other observers' responses on game events.
  */
 export async function executePost(name: CharacterName, opts: ExecuteOptions): Promise<void> {
   const character = CHARACTERS_BY_NAME[name]
   const gameWhich = opts.gameWhich ?? (opts.trigger === 'vote_close' ? 'previous' : 'active')
+  const channel: ChannelKind = opts.channel ?? 'story'
 
   const [game, state, recentChannelMessages] = await Promise.all([
     loadGameContext(gameWhich),
     getCharacterState(name),
-    getRecentMessages(name, 20),
+    getRecentMessages(name, channel, 20),
   ])
 
   const voteTag = game ? `${game.choicePoint}:rv${game.resetVersion}` : null
   const wantVote =
     game !== null &&
     game.record.status === 'open' &&
-    opts.trigger !== 'mention' && // mentions are conversation, not vote events
+    !NO_VOTE_TRIGGERS.has(opts.trigger) &&
     state.last_voted !== voteTag
 
   const voteReason = !game ? 'no game context'
     : game.record.status !== 'open' ? 'chapter closed'
-    : opts.trigger === 'mention' ? 'mention reply'
+    : NO_VOTE_TRIGGERS.has(opts.trigger) ? `${opts.trigger} posts do not vote`
     : state.last_voted === voteTag ? `already voted (${voteTag})`
     : 'eligible'
   console.log(
-    `[poster] ${name} executing ${opts.trigger}: game=${game?.choicePoint ?? '(none)'} ` +
+    `[poster] ${name} executing ${opts.trigger} → #${channel}: game=${game?.choicePoint ?? '(none)'} ` +
     `status=${game?.record.status ?? '-'} rv=${game?.resetVersion ?? '-'} vote=${wantVote ? 'yes' : `no (${voteReason})`}`
   )
 
@@ -65,7 +75,7 @@ export async function executePost(name: CharacterName, opts: ExecuteOptions): Pr
 
   console.log(`[poster] ${name} claude call done in ${((Date.now() - claudeStart) / 1000).toFixed(1)}s (choice=${result.voteChoice ?? 'none'})`)
 
-  await sendPost(name, result.post, opts.replyTo)
+  await sendPost(name, result.post, channel, opts.replyTo)
   console.log(`[poster] ${name} posted (${opts.trigger}): ${result.post}`)
 
   const now = new Date().toISOString()
@@ -78,6 +88,8 @@ export async function executePost(name: CharacterName, opts: ExecuteOptions): Pr
     } catch (err) {
       console.error(`[poster] ${name} vote failed (post already sent):`, err)
     }
+  } else if (wantVote && !result.voteChoice) {
+    console.warn(`[poster] ${name} was vote-eligible but chose not to vote`)
   }
 
   // Persist state: theory, history (with rolling summarisation), timestamps
@@ -97,17 +109,39 @@ export async function executePost(name: CharacterName, opts: ExecuteOptions): Pr
 
   await saveCharacterState(state)
 
-  // Chain: vesper_null's scheduled posts trigger an amber_drift response
-  if (name === 'vesper_null' && opts.trigger !== 'mention') {
+  // Chain: a game-event post invites responses from the other observers —
+  // each independently, and sometimes one simply stays silent.
+  if (CHAIN_TRIGGERS.has(opts.trigger)) {
     const testMode = await getTestMode()
-    const delay = randomDelay(testMode ? AMBER_DRIFT_DELAY_MS_TEST : AMBER_DRIFT_DELAY_MS_PROD)
-    await schedulePendingPost('amber_drift', {
-      scheduled_for: new Date(Date.now() + delay).toISOString(),
-      trigger: 'vesper_posted',
-      context: result.post,
-      game_which: gameWhich,
-    })
-    const delayLabel = delay < 60_000 ? `${Math.round(delay / 1000)}s` : `${Math.round(delay / 60_000)}min`
-    console.log(`[poster] scheduled amber_drift response in ${delayLabel}${testMode ? ' (test mode)' : ''}`)
+    for (const peer of CHARACTERS) {
+      if (peer.name === name) continue
+      if (Math.random() < PEER_SILENCE_CHANCE) {
+        console.log(`[poster] ${peer.name} stays silent this time`)
+        continue
+      }
+      const delay = randomDelay(testMode ? PEER_DELAY_MS_TEST : PEER_DELAY_MS_PROD)
+      await schedulePendingPost(peer.name, {
+        scheduled_for: new Date(Date.now() + delay).toISOString(),
+        trigger: 'peer_posted',
+        context: `${name}: ${result.post}`,
+        game_which: gameWhich,
+        channel,
+      })
+      const delayLabel = delay < 60_000 ? `${Math.round(delay / 1000)}s` : `${Math.round(delay / 60_000)}min`
+      console.log(`[poster] scheduled ${peer.name} response in ${delayLabel}${testMode ? ' (test mode)' : ''}`)
+    }
+
+    // After a chapter concludes, the initiator sometimes steps back and posts
+    // a bigger-picture take to #theories.
+    if (opts.trigger === 'vote_close' && THEORIES_CHANNEL_ID() && Math.random() < THEORY_AFTER_CLOSE_CHANCE) {
+      const delay = randomDelay(testMode ? THEORY_DELAY_MS_TEST : THEORY_DELAY_MS_PROD)
+      await schedulePendingPost(name, {
+        scheduled_for: new Date(Date.now() + delay).toISOString(),
+        trigger: 'theory',
+        game_which: 'previous',
+        channel: 'theories',
+      })
+      console.log(`[poster] scheduled ${name} theory post in ${Math.round(delay / 60_000)}min${testMode ? ' (test mode)' : ''}`)
+    }
   }
 }

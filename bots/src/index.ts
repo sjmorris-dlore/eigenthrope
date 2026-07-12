@@ -5,7 +5,7 @@ import { CHARACTERS } from './characters.js'
 import { preflightWallet } from './xrplVote.js'
 import { publishBotAddresses } from './artifacts.js'
 import { getActiveChoicePoint, getResetVersion, getTestMode } from './story.js'
-import { CHANNEL_ID, CLAUDE_MODEL, STORIES_BUCKET, vaultAddress } from './config.js'
+import { CLAUDE_MODEL, STORIES_BUCKET, STORY_CHANNEL_ID, THEORIES_CHANNEL_ID, vaultAddress } from './config.js'
 
 /**
  * Boot-time diagnostics: log the game state the bots see and derive each
@@ -19,7 +19,7 @@ async function preflight(): Promise<void> {
       getActiveChoicePoint(), getResetVersion(), getTestMode(),
     ])
     console.log(`[preflight] game: active=${activeCp ?? '(none)'} rv=${rv} test_mode=${testMode ? 'ON' : 'off'}`)
-    console.log(`[preflight] channel=${CHANNEL_ID()} model=${CLAUDE_MODEL} bucket=${STORIES_BUCKET || '(unset!)'} vault=${vaultAddress()}`)
+    console.log(`[preflight] story-channel=${STORY_CHANNEL_ID()} theories-channel=${THEORIES_CHANNEL_ID() || '(unset — theory posts go to story channel)'} model=${CLAUDE_MODEL} bucket=${STORIES_BUCKET || '(unset!)'} vault=${vaultAddress()}`)
   } catch (err) {
     console.error('[preflight] failed to read game config from DynamoDB:', err)
   }

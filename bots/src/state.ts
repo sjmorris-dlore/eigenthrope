@@ -3,15 +3,25 @@ import { dynamo } from './aws.js'
 import { CONFIG_TABLE } from './config.js'
 import type { CharacterName } from './characters.js'
 
-export type TriggerKind = 'episode_open' | 'vote_close' | 'vesper_posted' | 'mention' | 'game_reset'
+export type TriggerKind =
+  | 'episode_open'
+  | 'vote_close'
+  | 'game_reset'
+  | 'peer_posted'
+  | 'vesper_posted' // legacy name for peer_posted — read-only, never written
+  | 'mention'
+  | 'idle'
+  | 'theory'
 
 export interface PendingPost {
   scheduled_for: string // ISO timestamp
   trigger: TriggerKind
-  /** For vesper_posted: the text of the post being responded to */
+  /** For peer_posted: the text of the post being responded to; for idle: variant hint */
   context?: string
   /** Which choice point the post reacts to: the open one or the just-closed one */
   game_which?: 'active' | 'previous'
+  /** Target Discord channel — defaults to the story channel */
+  channel?: 'story' | 'theories'
 }
 
 export interface PostRecord {
