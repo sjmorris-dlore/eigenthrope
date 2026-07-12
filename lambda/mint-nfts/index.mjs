@@ -70,6 +70,8 @@ export async function handler(event) {
     vault_address,
     reset_version,
     bot_addresses, // observer-bot wallets — excluded from the winner tier when humans are in it
+    universe: eventUniverse, // stored chapter fields — may differ from the key
+    chapter: eventChapter,   // segments after migrations (e.g. "C01" vs "E01")
   } = event
 
   const sm = new SecretsManagerClient({ region: 'us-east-1' })
@@ -94,7 +96,11 @@ export async function handler(event) {
   await client.connect()
 
   try {
-    const [universe, chapter, cp] = choice_point.split(':')
+    // Vote memos carry the STORED universe/chapter fields (that's what the
+    // site and bots write), so match on those — key segments only as fallback.
+    const [keyUniverse, keyChapter, cp] = choice_point.split(':')
+    const universe = eventUniverse ?? keyUniverse
+    const chapter = eventChapter ?? keyChapter
     const txResponse = await client.request({
       command: 'account_tx',
       account: vault_address,

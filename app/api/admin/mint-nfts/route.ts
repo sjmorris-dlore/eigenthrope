@@ -34,6 +34,10 @@ export async function POST(request: Request) {
     vault_address: vaultAddress,
     reset_version: resetVersion,
     bot_addresses: botAddresses,
+    // Stored fields — vote memos use these, and they can differ from the
+    // choice_point key segments after migrations (e.g. "C01" vs "E01")
+    universe: chapter.universe,
+    chapter: chapter.chapter,
   })
 
   return Response.json({ ok: true, message: 'Minting started — check Lambda logs for progress.' }, { status: 202 })
