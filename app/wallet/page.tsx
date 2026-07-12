@@ -12,6 +12,7 @@ interface XrplNFT {
   Issuer: string
   URI?: string
   Flags: number
+  NFTokenTaxon: number
 }
 
 interface NFTWithMeta extends XrplNFT {
@@ -22,6 +23,8 @@ interface NFTWithMeta extends XrplNFT {
   chapterLabel?: string
   artifactType?: 'winner' | 'participation'
   imageKey?: string
+  /** Carries resonance in the current game iteration */
+  isCurrent?: boolean
 }
 
 function decodeUri(hex: string | undefined): string | undefined {
@@ -82,14 +85,19 @@ export default function WalletPage() {
         const all: XrplNFT[] = data.result?.account_nfts ?? []
         const mine = all.filter(n => n.Issuer === VAULT_ADDRESS)
 
-        // Game-side metadata (chapter, type, artifact image) in one call
-        const gameMeta: Record<string, { chapter_label?: string; artifact_type?: 'winner' | 'participation'; image_key?: string }> =
-          mine.length > 0
-            ? await fetch(`/api/artifact-meta?ids=${mine.map(n => n.NFTokenID).join(',')}`)
-                .then(r => (r.ok ? r.json() : { meta: {} }))
-                .then(d => d.meta ?? {})
-                .catch(() => ({}))
-            : {}
+        // Game-side metadata (chapter, type, artifact image, current taxons) in one call
+        const metaRes: {
+          meta?: Record<string, { chapter_label?: string; artifact_type?: 'winner' | 'participation'; image_key?: string }>
+          current?: { winner_taxon: number; participation_taxon: number }
+        } = mine.length > 0
+          ? await fetch(`/api/artifact-meta?ids=${mine.map(n => n.NFTokenID).join(',')}`)
+              .then(r => (r.ok ? r.json() : {}))
+              .catch(() => ({}))
+          : {}
+        const gameMeta = metaRes.meta ?? {}
+        const currentTaxons = metaRes.current
+          ? new Set([metaRes.current.winner_taxon, metaRes.current.participation_taxon])
+          : null
 
         // NFT's own metadata as fallback for anything the game tables don't know
         const withMeta: NFTWithMeta[] = await Promise.all(
@@ -104,6 +112,7 @@ export default function WalletPage() {
               chapterLabel: game?.chapter_label,
               artifactType: game?.artifact_type,
               imageKey: game?.image_key,
+              isCurrent: currentTaxons ? currentTaxons.has(n.NFTokenTaxon) : undefined,
             }
           })
         )
@@ -267,7 +276,11 @@ export default function WalletPage() {
                   return (
                     <div
                       key={nft.NFTokenID}
-                      className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                      className={`rounded-xl border p-4 ${
+                        nft.isCurrent
+                          ? 'border-emerald-400 bg-white ring-1 ring-emerald-400/40 dark:border-emerald-600 dark:bg-zinc-950 dark:ring-emerald-600/40'
+                          : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950'
+                      }`}
                     >
                       <div className="flex items-start gap-3">
                         {thumb && (
@@ -281,17 +294,34 @@ export default function WalletPage() {
                           </div>
                         )}
                         <div className="min-w-0">
-                          {typeLabel && (
-                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
-                              {typeLabel}
-                            </p>
-                          )}
+                          <div className="flex flex-wrap items-center gap-2">
+                            {typeLabel && (
+                              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                                {typeLabel}
+                              </p>
+                            )}
+                            {nft.isCurrent === true && (
+                              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                current game
+                              </span>
+                            )}
+                            {nft.isCurrent === false && (
+                              <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                                past iteration
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
                             {nft.chapterLabel ?? nft.name ?? 'Eigenthrope Artifact'}
                           </p>
                           <p className="mt-0.5 font-mono text-[10px] text-zinc-400 break-all">
                             {nft.NFTokenID}
                           </p>
+                          {nft.isCurrent === false && (
+                            <p className="mt-0.5 text-[10px] text-zinc-400">
+                              No resonance — from an earlier run of the story.
+                            </p>
+                          )}
                         </div>
                       </div>
 

@@ -1,5 +1,7 @@
 import { BatchGetCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import { getResetVersion } from '@/lib/config'
+import { winnerTaxon, participationTaxon } from '@/lib/resonance'
 
 export interface ArtifactMeta {
   choice_point: string
@@ -71,8 +73,19 @@ export async function GET(request: Request) {
     // fall through with whatever was resolved — callers have URI fallback
   }
 
+  // Which taxons count for resonance right now — artifacts from earlier
+  // game iterations carry older taxons and score nothing.
+  const rv = await getResetVersion()
+
   return Response.json(
-    { meta },
-    { headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=600' } },
+    {
+      meta,
+      current: {
+        reset_version: rv,
+        winner_taxon: winnerTaxon(rv),
+        participation_taxon: participationTaxon(rv),
+      },
+    },
+    { headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=300' } },
   )
 }
