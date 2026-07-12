@@ -16,24 +16,32 @@ function fromHex(hex: string) {
   return Buffer.from(hex, 'hex').toString('utf8')
 }
 
-async function countVotes(
+/** Fetch the vault's recent transactions — the shared input for vote counting. */
+export async function fetchVaultTransactions(vaultAddress: string, limit = 200): Promise<unknown[]> {
+  try {
+    const res = await fetch(XRPL_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        method: 'account_tx',
+        params: [{ account: vaultAddress, limit, forward: false }],
+      }),
+    })
+    const data = await res.json() // throws on rate-limit plain-text responses
+    return (data.result?.transactions ?? []) as unknown[]
+  } catch {
+    return []
+  }
+}
+
+/** Count an account's completed-chapter votes from an already-fetched tx list. */
+export function countVotesFromTransactions(
+  transactions: unknown[],
   account: string,
-  vaultAddress: string,
   resetVersion: number,
   activeChoicePoint?: string  // "universe:chapter:cp" — excluded until chapter closes
-): Promise<number> {
+): number {
   const [activeUniverse, activeChapter, activeCp] = (activeChoicePoint ?? '').split(':')
-  const res = await fetch(XRPL_RPC, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      method: 'account_tx',
-      params: [{ account: vaultAddress, limit: 200, forward: false }],
-    }),
-  })
-
-  const data = await res.json()
-  const transactions: unknown[] = data.result?.transactions ?? []
   const participated = new Set<string>()
   const seenAccounts = new Set<string>()
 
@@ -159,17 +167,19 @@ export interface ResonanceBreakdown {
 
 export async function getResonanceBreakdown(
   account: string,
-  vaultAddress: string
+  vaultAddress: string,
+  /** Reuse an already-fetched vault tx list — callers scoring many accounts
+   *  (the leaderboard) must pass this to avoid hammering the XRPL cluster. */
+  vaultTransactions?: unknown[],
 ): Promise<ResonanceBreakdown> {
   const [resetVersion, configItem] = await Promise.all([
     getResetVersion(),
     dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'active_choice_point' } })),
   ])
   const activeChoicePoint = configItem.Item?.value as string | undefined
-  const [votes, { winners, participation }] = await Promise.all([
-    countVotes(account, vaultAddress, resetVersion, activeChoicePoint),
-    countArtifacts(account, vaultAddress, resetVersion),
-  ])
+  const transactions = vaultTransactions ?? await fetchVaultTransactions(vaultAddress)
+  const votes = countVotesFromTransactions(transactions, account, resetVersion, activeChoicePoint)
+  const { winners, participation } = await countArtifacts(account, vaultAddress, resetVersion)
   return {
     votes,
     winner_artifacts: winners,

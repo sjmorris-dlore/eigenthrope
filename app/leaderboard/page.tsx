@@ -13,7 +13,10 @@ function truncate(account: string): string {
 
 export default async function LeaderboardPage() {
   const vaultAddress = process.env.EIGENTHROPE_VAULT_ADDRESS?.trim() ?? ''
-  const entries = vaultAddress ? await getLeaderboard(vaultAddress) : []
+  // Never crash the page on upstream hiccups (XRPL rate limits etc.)
+  const entries = vaultAddress
+    ? await getLeaderboard(vaultAddress).catch(() => null)
+    : []
 
   return (
     <div className="flex flex-1 flex-col items-center bg-zinc-50 px-4 py-16 sm:px-8 dark:bg-black">
@@ -35,7 +38,11 @@ export default async function LeaderboardPage() {
           </div>
         </div>
 
-        {entries.length === 0 ? (
+        {entries === null ? (
+          <p className="text-base italic leading-7 text-zinc-400 dark:text-zinc-500">
+            The ledger is busy — refresh in a moment.
+          </p>
+        ) : entries.length === 0 ? (
           <p className="text-base italic leading-7 text-zinc-400 dark:text-zinc-500">
             No observers yet this cycle. The first vote starts the board.
           </p>
