@@ -1,6 +1,6 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
-import { getResetVersion } from '@/lib/config'
+import { getResetVersion, getBotAddresses } from '@/lib/config'
 import type { ChapterData } from '@/app/api/chapter/route'
 
 const XRPL_RPC = 'https://xrplcluster.com/'
@@ -17,9 +17,10 @@ export async function GET(request: Request) {
   const vaultAddress = process.env.EIGENTHROPE_VAULT_ADDRESS?.trim()
   if (!vaultAddress) return Response.json({ error: 'EIGENTHROPE_VAULT_ADDRESS not set' }, { status: 500 })
 
-  const [chapterItem, resetVersion] = await Promise.all([
+  const [chapterItem, resetVersion, botAddresses] = await Promise.all([
     dynamo.send(new GetCommand({ TableName: 'eigenthrope_chapters', Key: { choice_point: choicePoint } })),
     getResetVersion(),
+    getBotAddresses(),
   ])
 
   const chapter = chapterItem.Item as ChapterData | undefined
@@ -76,11 +77,16 @@ export async function GET(request: Request) {
   }
 
   const uniqueVoters = Object.keys(allVoters).length
-  const winningVotersCount = winningChoice
-    ? Object.values(allVoters).filter(c => c === winningChoice).length
-    : 0
+  // Mirror the mint-nfts Lambda: bots are excluded from the winner tier
+  // unless the winning side is bots alone.
+  const botSet = new Set(botAddresses)
+  const winningVoterAddrs = winningChoice
+    ? Object.entries(allVoters).filter(([, c]) => c === winningChoice).map(([addr]) => addr)
+    : []
+  const humanWinningCount = winningVoterAddrs.filter(a => !botSet.has(a)).length
+  const eligibleWinnersCount = humanWinningCount > 0 ? humanWinningCount : winningVoterAddrs.length
   const winnerTierSize = winningChoice
-    ? Math.max(1, Math.ceil(winningVotersCount * finalYieldPct))
+    ? Math.max(1, Math.ceil(eligibleWinnersCount * finalYieldPct))
     : 0
   const expectedMints = uniqueVoters + winnerTierSize // participation for all + winner for tier
 

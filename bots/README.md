@@ -33,6 +33,20 @@ public working theories shown on the site's `/observers` page.
   continuity across test resets.
 - **@mentions** get an immediate in-character reply (2-min per-bot cooldown,
   bot-authored messages ignored to prevent loops). No vote on mention replies.
+- **NFT claiming (pure code, no model involvement).** Every 30min (2min in
+  test mode) the scheduler checks `eigenthrope_artifacts` for pending offers
+  to bot addresses and accepts them — after verifying **on-ledger** that the
+  offer is vault-owned, zero-cost, and destined to the bot. Claimed NFTs feed
+  vote weight. **Winner-NFT rule:** bots are excluded from the winner tier at
+  mint time (the bot process publishes its addresses to `eigenthrope_config`
+  key `bot_addresses`; the mint Lambda draws the tier from human winning
+  voters unless the winning side is bots alone), and the claim job re-checks
+  the same rule before accepting any winner-type offer.
+- **Vote weight is live resonance.** At vote time the bot fetches
+  `/api/resonance?account=<its address>` from the site (same formula as
+  players: votes + 1 + winner NFTs × 5 + participation × 1) and puts that in
+  the memo. Falls back to the static `weight` in `characters.ts` if the site
+  is unreachable.
 - **Test mode** — a master switch on `/admin` (`test_mode` in `eigenthrope_config`,
   toggled via `/api/admin/test-mode`). When on: vesper_null's delay drops to
   1–3min (from 2–4h) and amber_drift's drops to 30–90s (from 30–60min), and the

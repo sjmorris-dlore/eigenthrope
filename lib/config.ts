@@ -21,6 +21,25 @@ export async function setResetVersion(version: number): Promise<void> {
   }))
 }
 
+/**
+ * Wallet addresses of the observer bots. The bot process publishes these to
+ * eigenthrope_config at startup (key: bot_addresses, value: {name: address}).
+ * Used to keep bots out of the winner-NFT tier when humans are in it.
+ */
+export async function getBotAddresses(): Promise<string[]> {
+  try {
+    const result = await dynamo.send(new GetCommand({
+      TableName: 'eigenthrope_config',
+      Key: { key: 'bot_addresses' },
+    }))
+    const value = result.Item?.value
+    if (typeof value !== 'object' || value === null) return []
+    return Object.values(value as Record<string, string>).filter(v => typeof v === 'string')
+  } catch {
+    return []
+  }
+}
+
 export async function getTestMode(): Promise<boolean> {
   try {
     const result = await dynamo.send(new GetCommand({

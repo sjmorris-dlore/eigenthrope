@@ -69,6 +69,7 @@ export async function handler(event) {
     participation_nft_uri,
     vault_address,
     reset_version,
+    bot_addresses, // observer-bot wallets — excluded from the winner tier when humans are in it
   } = event
 
   const sm = new SecretsManagerClient({ region: 'us-east-1' })
@@ -134,8 +135,18 @@ export async function handler(event) {
       .map(([address, { weight }]) => ({ address, weight }))
       .sort((a, b) => b.weight - a.weight)
 
-    const numWinnerTier = Math.max(1, Math.ceil(winningVoters.length * (final_yield_pct ?? 0.18)))
-    const winnerSet = new Set(winningVoters.slice(0, numWinnerTier).map(w => w.address))
+    // Observer bots never take winner-tier slots from humans: if any human
+    // voted for the winning choice, the tier is drawn from humans only.
+    // Bots become eligible only when the winning side is bots alone.
+    const botSet = new Set(bot_addresses ?? [])
+    const humanWinningVoters = winningVoters.filter(w => !botSet.has(w.address))
+    const eligibleWinners = humanWinningVoters.length > 0 ? humanWinningVoters : winningVoters
+    if (humanWinningVoters.length < winningVoters.length) {
+      console.log(`Winner tier: ${winningVoters.length - humanWinningVoters.length} bot voter(s) ${humanWinningVoters.length > 0 ? 'excluded (humans present)' : 'eligible (no human winners)'}`)
+    }
+
+    const numWinnerTier = Math.max(1, Math.ceil(eligibleWinners.length * (final_yield_pct ?? 0.18)))
+    const winnerSet = new Set(eligibleWinners.slice(0, numWinnerTier).map(w => w.address))
 
     const results = { minted: 0, skipped: 0, errors: [] }
 

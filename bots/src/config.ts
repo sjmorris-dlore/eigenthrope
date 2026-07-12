@@ -14,6 +14,9 @@ export const vaultAddress = () => required('EIGENTHROPE_VAULT_ADDRESS')
 // S3
 export const STORIES_BUCKET = process.env.EIGENTHROPE_S3_BUCKET?.trim() ?? ''
 
+// Main site — used for the public resonance API (single source of truth for vote weight)
+export const SITE_URL = process.env.EIGENTHROPE_SITE_URL?.trim() || 'https://eigenthrope.sjmorriswrites.com'
+
 // Discord
 export const CHANNEL_ID = () => required('EIGENTHROPE_CHANNEL_ID')
 
@@ -26,6 +29,8 @@ export const CHAPTERS_TABLE = 'eigenthrope_chapters'
 
 // Scheduling (ms)
 export const POLL_INTERVAL_MS = 60_000
+export const CLAIM_INTERVAL_MS_PROD = 30 * 60_000 // check for claimable NFT offers every 30min
+export const CLAIM_INTERVAL_MS_TEST = 2 * 60_000  // every 2min in test mode
 export const AMBER_DRIFT_DELAY_MS_PROD: [number, number] = [30 * 60_000, 60 * 60_000] // 30–60min
 export const AMBER_DRIFT_DELAY_MS_TEST: [number, number] = [30_000, 90_000] // 30–90s, for the admin test-mode toggle
 export const MENTION_COOLDOWN_MS = 2 * 60_000 // per-channel cooldown for @mention replies

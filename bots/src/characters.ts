@@ -2,7 +2,7 @@ export interface CharacterDef {
   name: string
   /** The character brief injected into every Claude prompt */
   brief: string
-  /** Vote weight (resonance score) submitted in the memo */
+  /** Fallback vote weight — live resonance (votes + NFTs held) is used when the site API is reachable */
   weight: number
 }
 

@@ -1,6 +1,6 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
-import { getResetVersion } from '@/lib/config'
+import { getResetVersion, getBotAddresses } from '@/lib/config'
 import { invokeAsync } from '@/lib/lambda'
 import { winnerTaxon, participationTaxon } from '@/lib/resonance'
 import type { ChapterData } from '@/app/api/chapter/route'
@@ -12,9 +12,10 @@ export async function POST(request: Request) {
   const vaultAddress = process.env.EIGENTHROPE_VAULT_ADDRESS?.trim()
   if (!vaultAddress) return Response.json({ error: 'EIGENTHROPE_VAULT_ADDRESS not set' }, { status: 500 })
 
-  const [chapterItem, resetVersion] = await Promise.all([
+  const [chapterItem, resetVersion, botAddresses] = await Promise.all([
     dynamo.send(new GetCommand({ TableName: 'eigenthrope_chapters', Key: { choice_point } })),
     getResetVersion(),
+    getBotAddresses(),
   ])
 
   const chapter = chapterItem.Item as ChapterData | undefined
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
     participation_nft_uri: chapter.participation_nft_uri ?? null,
     vault_address: vaultAddress,
     reset_version: resetVersion,
+    bot_addresses: botAddresses,
   })
 
   return Response.json({ ok: true, message: 'Minting started — check Lambda logs for progress.' }, { status: 202 })

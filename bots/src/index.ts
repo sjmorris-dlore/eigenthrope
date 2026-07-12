@@ -3,6 +3,7 @@ import { startScheduler } from './scheduler.js'
 import { executePost } from './poster.js'
 import { CHARACTERS } from './characters.js'
 import { preflightWallet } from './xrplVote.js'
+import { publishBotAddresses } from './artifacts.js'
 import { getActiveChoicePoint, getResetVersion, getTestMode } from './story.js'
 import { CHANNEL_ID, CLAUDE_MODEL, STORIES_BUCKET, vaultAddress } from './config.js'
 
@@ -23,12 +24,24 @@ async function preflight(): Promise<void> {
     console.error('[preflight] failed to read game config from DynamoDB:', err)
   }
 
+  const addresses: Record<string, string> = {}
   for (const character of CHARACTERS) {
     try {
       const address = await preflightWallet(character)
+      addresses[character.name] = address
       console.log(`[preflight] ${character.name} wallet OK: ${address} — verify this matches the funded wallet in Xaman`)
     } catch (err) {
       console.error(`[preflight] ${character.name} wallet FAILED (votes will not work):`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  // Registers the bots with the game side: the mint Lambda uses this list to
+  // keep bots out of the winner-NFT tier whenever humans are in it.
+  if (Object.keys(addresses).length > 0) {
+    try {
+      await publishBotAddresses(addresses)
+    } catch (err) {
+      console.error('[preflight] failed to publish bot addresses:', err)
     }
   }
 }

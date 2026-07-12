@@ -1,7 +1,23 @@
 import { CHARACTERS } from './characters.js'
 import { getCharacterState, claimPendingPost } from './state.js'
 import { executePost } from './poster.js'
-import { POLL_INTERVAL_MS } from './config.js'
+import { claimPendingArtifacts } from './artifacts.js'
+import { getTestMode } from './story.js'
+import { CLAIM_INTERVAL_MS_PROD, CLAIM_INTERVAL_MS_TEST, POLL_INTERVAL_MS } from './config.js'
+
+let lastClaimCheck = 0
+
+/** Periodically claim NFT offers the game has extended to the bot wallets. */
+async function maybeClaimArtifacts(): Promise<void> {
+  const interval = (await getTestMode()) ? CLAIM_INTERVAL_MS_TEST : CLAIM_INTERVAL_MS_PROD
+  if (Date.now() - lastClaimCheck < interval) return
+  lastClaimCheck = Date.now()
+  try {
+    await claimPendingArtifacts()
+  } catch (err) {
+    console.error('[scheduler] artifact claim pass failed:', err)
+  }
+}
 
 /**
  * Durable scheduler: pending posts live in DynamoDB (written by the Next.js
@@ -9,6 +25,7 @@ import { POLL_INTERVAL_MS } from './config.js'
  * process restarts. Each tick claims due posts atomically before executing.
  */
 async function tick(): Promise<void> {
+  await maybeClaimArtifacts()
   for (const { name } of CHARACTERS) {
     try {
       const state = await getCharacterState(name)
