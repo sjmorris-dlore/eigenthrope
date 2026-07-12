@@ -75,7 +75,7 @@ export default function TopNav() {
               </Link>
               <div className="hidden items-center gap-6 sm:flex">
                 <Link href="/archive" className={navLink}>Archive</Link>
-                <Link href="/observers" className={navLink}>Observers</Link>
+                {/* Observers hidden for now — page still exists at /observers */}
                 <Link href="/wallet" className={navLink}>Artifacts</Link>
                 {DISCORD_URL && (
                   <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className={navLink}>
@@ -113,7 +113,7 @@ export default function TopNav() {
         <div className="fixed inset-x-0 top-20 z-40 max-h-[calc(100vh-5rem)] overflow-y-auto border-b border-zinc-200 bg-zinc-50 sm:hidden dark:border-zinc-800 dark:bg-black">
           <div className="flex flex-col gap-3 p-4">
             <Link href="/archive" onClick={() => setMobileOpen(false)} className={navLink}>Archive</Link>
-            <Link href="/observers" onClick={() => setMobileOpen(false)} className={navLink}>Observers</Link>
+            {/* Observers hidden for now — page still exists at /observers */}
             <Link href="/wallet" onClick={() => setMobileOpen(false)} className={navLink}>Artifacts</Link>
             {DISCORD_URL && (
               <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className={navLink}>

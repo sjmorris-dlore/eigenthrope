@@ -1,6 +1,7 @@
 import { GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import Link from 'next/link'
+import DiscordTicker from '@/app/components/DiscordTicker'
 
 interface UniverseRecord {
   universe_id: string
@@ -100,6 +101,7 @@ export default async function ArchivePage() {
         )}
 
       </main>
+      <DiscordTicker />
     </div>
   )
 }
