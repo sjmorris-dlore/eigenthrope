@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { tickerEnabled, TICKER_TOGGLE_EVENT } from '@/app/components/TickerToggle'
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL
 
@@ -45,11 +46,20 @@ export default function DiscordTicker() {
   const [activity, setActivity] = useState<Activity | null>(null)
   const [bubbles, setBubbles] = useState<Bubble[]>([])
   const [reducedMotion, setReducedMotion] = useState(false)
+  const [enabled, setEnabled] = useState(true)
   const nextId = useRef(0)
   const queueIndex = useRef(0)
 
   useEffect(() => {
     setReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    setEnabled(tickerEnabled())
+    const onToggle = (e: Event) => {
+      const next = Boolean((e as CustomEvent).detail)
+      setEnabled(next)
+      if (!next) setBubbles([])
+    }
+    window.addEventListener(TICKER_TOGGLE_EVENT, onToggle)
+    return () => window.removeEventListener(TICKER_TOGGLE_EVENT, onToggle)
   }, [])
 
   useEffect(() => {
@@ -66,7 +76,7 @@ export default function DiscordTicker() {
   }, [])
 
   useEffect(() => {
-    if (!activity || reducedMotion || !DISCORD_URL) return
+    if (!activity || reducedMotion || !DISCORD_URL || !enabled) return
 
     // Build the rotation: observer posts interleaved with pulse bubbles —
     // roughly one pulse per 3 human messages in the last 24h, capped.
@@ -93,9 +103,9 @@ export default function DiscordTicker() {
     spawn()
     const interval = setInterval(spawn, SPAWN_INTERVAL_MS)
     return () => clearInterval(interval)
-  }, [activity, reducedMotion])
+  }, [activity, reducedMotion, enabled])
 
-  if (!DISCORD_URL || reducedMotion || bubbles.length === 0) return null
+  if (!DISCORD_URL || reducedMotion || !enabled || bubbles.length === 0) return null
 
   return (
     <div className="pointer-events-none fixed bottom-0 right-2 z-40 h-[60vh] w-64 overflow-hidden sm:right-6">

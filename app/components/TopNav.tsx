@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
+import TickerToggle from './TickerToggle'
 import GameplayMenu from './GameplayMenu'
 import { useEpisodeNav } from './EpisodeContext'
 import RabbitHoleMenu from './RabbitHoleMenu'
@@ -94,6 +95,7 @@ export default function TopNav() {
               <AuthorLink />
             </span>
           )}
+          {!isAdmin && <TickerToggle />}
           <ThemeToggle />
           {!isAdmin && (
             <button
