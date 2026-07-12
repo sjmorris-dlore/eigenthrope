@@ -1,5 +1,7 @@
 import { Client, GatewayIntentBits, Partials, type Message, type TextChannel } from 'discord.js'
-import { CHANNEL_ID, MENTION_COOLDOWN_MS } from './config.js'
+import { PutCommand } from '@aws-sdk/lib-dynamodb'
+import { dynamo } from './aws.js'
+import { CHANNEL_ID, CONFIG_TABLE, MENTION_COOLDOWN_MS } from './config.js'
 import { CHARACTERS, discordTokenEnvVar, type CharacterName } from './characters.js'
 import type { DiscordMessageContext } from './claude.js'
 
@@ -10,6 +12,48 @@ export type MentionHandler = (
 
 const clients = new Map<CharacterName, Client>()
 const lastMentionReplyAt = new Map<CharacterName, number>()
+
+// ── Anonymous activity pulse ─────────────────────────────────────────────────
+// Timestamps (only — no content, no authors) of human messages in the game
+// channel, flushed to DynamoDB for the site's Discord ticker. Deliberately
+// anonymous: the site shows *that* people are talking, never what they said.
+const PULSE_KEY = 'discord_pulse'
+const PULSE_FLUSH_MS = 5 * 60_000
+const PULSE_WINDOW_MS = 24 * 3600_000
+const PULSE_MAX = 500
+let humanMessageTimes: number[] = []
+let pulseDirty = false
+
+function recordHumanMessage(): void {
+  humanMessageTimes.push(Date.now())
+  if (humanMessageTimes.length > PULSE_MAX) humanMessageTimes = humanMessageTimes.slice(-PULSE_MAX)
+  pulseDirty = true
+}
+
+async function flushPulse(): Promise<void> {
+  if (!pulseDirty) return
+  pulseDirty = false
+  const cutoff = Date.now() - PULSE_WINDOW_MS
+  humanMessageTimes = humanMessageTimes.filter(t => t >= cutoff)
+  try {
+    await dynamo.send(new PutCommand({
+      TableName: CONFIG_TABLE,
+      Item: {
+        key: PULSE_KEY,
+        value: {
+          count_24h: humanMessageTimes.length,
+          last_at: humanMessageTimes.length > 0
+            ? new Date(humanMessageTimes[humanMessageTimes.length - 1]).toISOString()
+            : null,
+          updated_at: new Date().toISOString(),
+        },
+      },
+    }))
+  } catch (err) {
+    console.error('[discord] pulse flush failed:', err)
+    pulseDirty = true // retry next interval
+  }
+}
 
 export function getClient(name: CharacterName): Client {
   const client = clients.get(name)
@@ -69,10 +113,15 @@ export async function startBots(onMention: MentionHandler): Promise<void> {
       partials: [Partials.Channel],
     })
 
+    // Both clients see every message — only the first character's client
+    // counts activity, so humans aren't double-counted.
+    const isPulseCounter = character.name === CHARACTERS[0].name
+
     client.on('messageCreate', async (message) => {
       try {
         if (message.author.bot) return // never respond to bots — prevents bot-to-bot loops
         if (message.channelId !== CHANNEL_ID()) return
+        if (isPulseCounter) recordHumanMessage()
         if (!client.user || !message.mentions.has(client.user)) return
 
         const last = lastMentionReplyAt.get(character.name) ?? 0
@@ -92,4 +141,6 @@ export async function startBots(onMention: MentionHandler): Promise<void> {
     await client.login(token)
     clients.set(character.name, client)
   }
+
+  setInterval(() => void flushPulse(), PULSE_FLUSH_MS)
 }

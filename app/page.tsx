@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import App from '@/app/components/App'
 import ChapterTimer from '@/app/components/ChapterTimer'
+import DiscordTicker from '@/app/components/DiscordTicker'
 
 export default function Home() {
   return (
@@ -30,6 +31,7 @@ export default function Home() {
           <Link href="/privacy" className="hover:text-zinc-600 dark:hover:text-zinc-300">Privacy</Link>
         </div>
       </main>
+      <DiscordTicker />
     </div>
   )
 }
