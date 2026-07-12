@@ -66,7 +66,9 @@ export const THEORY_DELAY_MS_TEST: [number, number] = [2 * 60_000, 4 * 60_000] /
 export const IDLE_CHANCE_PER_TICK_PROD = 1 / 500
 export const IDLE_CHANCE_PER_TICK_TEST = 1 / 10
 export const IDLE_MIN_GAP_MS_PROD = 4 * 3600_000 // no idle post within 4h of any other post
-export const IDLE_MIN_GAP_MS_TEST = 10 * 60_000
+// 30min gap caps idle chatter at ~2/hr/bot (~$2/day) even when test mode is
+// forgotten ON — event/chain/claim timings stay fast regardless.
+export const IDLE_MIN_GAP_MS_TEST = 30 * 60_000
 export const IDLE_TANGENT_CHANCE = 0.25 // story-adjacent personal tangent instead of analysis
 export const IDLE_THEORY_CHANCE = 0.2 // idle post goes to #theories as a bigger-picture take
 
