@@ -51,6 +51,10 @@ export default function WalletPage() {
   const [signUrl, setSignUrl] = useState<string | null>(null)
   const [burned, setBurned] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  const [listingToken, setListingToken] = useState<string | null>(null)
+  const [listPrice, setListPrice] = useState('')
+  const [listed, setListed] = useState<Set<string>>(new Set())
+  const [pendingAction, setPendingAction] = useState<'burn' | 'list'>('burn')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -87,6 +91,7 @@ export default function WalletPage() {
     if (!account) return
     setError(null)
     setActiveToken(nft.NFTokenID)
+    setPendingAction('burn')
 
     const res = await fetch('/api/wallet/burn-nft', {
       method: 'POST',
@@ -131,6 +136,55 @@ export default function WalletPage() {
     setQr(null)
     setSignUrl(null)
     setActiveToken(null)
+    setListingToken(null)
+  }
+
+  const list = async (nft: NFTWithMeta) => {
+    const amountXrp = Number(listPrice)
+    if (!Number.isFinite(amountXrp) || amountXrp <= 0) {
+      setError('Enter a price in XRP')
+      return
+    }
+    setError(null)
+    setActiveToken(nft.NFTokenID)
+    setPendingAction('list')
+
+    const res = await fetch('/api/bazaar/payload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list', nft_token_id: nft.NFTokenID, amount_xrp: amountXrp }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(typeof data.error === 'string' ? data.error : JSON.stringify(data.error ?? data))
+      setActiveToken(null)
+      return
+    }
+
+    setQr(data.qr)
+    setSignUrl(data.signUrl)
+
+    intervalRef.current = setInterval(async () => {
+      const status = await fetch(`/api/vote/${data.uuid}`)
+      const s = await status.json()
+      if (s.signed) {
+        clearInterval(intervalRef.current!)
+        setQr(null)
+        setSignUrl(null)
+        setActiveToken(null)
+        setListingToken(null)
+        if (!s.dispatched_result || s.dispatched_result === 'tesSUCCESS') {
+          setListed(prev => new Set([...prev, nft.NFTokenID]))
+        } else {
+          setError(`Transaction failed: ${s.dispatched_result}`)
+        }
+      } else if (s.expired || s.rejected) {
+        clearInterval(intervalRef.current!)
+        setQr(null)
+        setSignUrl(null)
+        setActiveToken(null)
+      }
+    }, 2000)
   }
 
   const visible = nfts.filter(n => !burned.has(n.NFTokenID))
@@ -187,9 +241,11 @@ export default function WalletPage() {
 
                       {isActive && qr && signUrl ? (
                         <div className="mt-4 flex flex-col items-center gap-3">
-                          <p className="text-xs text-zinc-500">Scan with Xaman to burn</p>
+                          <p className="text-xs text-zinc-500">
+                            Scan with Xaman to {pendingAction === 'burn' ? 'burn' : 'list for sale'}
+                          </p>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={qr} alt="Xaman burn QR" width={160} height={160} />
+                          <img src={qr} alt="Xaman QR" width={160} height={160} />
                           <a
                             href={signUrl}
                             target="_blank"
@@ -202,14 +258,50 @@ export default function WalletPage() {
                             Cancel
                           </button>
                         </div>
+                      ) : listed.has(nft.NFTokenID) ? (
+                        <p className="mt-3 text-xs text-zinc-500">Listed on the bazaar.</p>
+                      ) : listingToken === nft.NFTokenID ? (
+                        <div className="mt-3 flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={listPrice}
+                            onChange={e => setListPrice(e.target.value)}
+                            placeholder="price in XRP"
+                            className="w-28 rounded border border-zinc-300 bg-zinc-50 px-2 py-1 text-xs text-zinc-900 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                          />
+                          <button
+                            onClick={() => list(nft)}
+                            disabled={isBusy}
+                            className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                          >
+                            List
+                          </button>
+                          <button
+                            onClick={() => { setListingToken(null); setListPrice('') }}
+                            className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       ) : (
-                        <button
-                          onClick={() => burn(nft)}
-                          disabled={isBusy}
-                          className="mt-3 rounded border border-red-200 px-3 py-1.5 text-xs text-red-500 hover:border-red-400 hover:text-red-700 disabled:opacity-40 dark:border-red-900 dark:text-red-400 dark:hover:border-red-700 dark:hover:text-red-300"
-                        >
-                          Burn
-                        </button>
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            onClick={() => { setListingToken(nft.NFTokenID); setListPrice('') }}
+                            disabled={isBusy}
+                            className="rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-zinc-100"
+                          >
+                            List for sale
+                          </button>
+                          <button
+                            onClick={() => burn(nft)}
+                            disabled={isBusy}
+                            className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-500 hover:border-red-400 hover:text-red-700 disabled:opacity-40 dark:border-red-900 dark:text-red-400 dark:hover:border-red-700 dark:hover:text-red-300"
+                          >
+                            Burn
+                          </button>
+                        </div>
                       )}
                     </div>
                   )

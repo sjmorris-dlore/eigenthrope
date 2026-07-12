@@ -51,7 +51,7 @@ async function getVoterAccounts(vaultAddress: string, resetVersion: number): Pro
 }
 
 /** All opt-in aliases, keyed by account. Stored as alias:<account> config items. */
-async function getAliases(): Promise<Map<string, string>> {
+export async function getAliases(): Promise<Map<string, string>> {
   const aliases = new Map<string, string>()
   try {
     const res = await dynamo.send(new ScanCommand({
