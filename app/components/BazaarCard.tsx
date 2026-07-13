@@ -11,6 +11,7 @@ export interface BazaarCardData {
   amount_drops: string
   seller: string
   seller_display: string
+  seller_glyph: string
 }
 
 export default function BazaarCard({ listing, account }: { listing: BazaarCardData; account?: string | null }) {
@@ -89,7 +90,12 @@ export default function BazaarCard({ listing, account }: { listing: BazaarCardDa
       <p className="mt-0.5 text-sm font-medium text-zinc-900 dark:text-zinc-50">
         {listing.chapter_label ?? listing.choice_point}
       </p>
-      <p className="mt-1 text-xs text-zinc-400">seller: {listing.seller_display}</p>
+      <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-400">
+        <svg width="14" height="14" viewBox="0 0 32 32" className="shrink-0 text-violet-500 dark:text-violet-400" aria-hidden>
+          <polygon points={listing.seller_glyph} fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        </svg>
+        seller: {listing.seller_display}
+      </p>
 
       {qr ? (
         <div className="mt-3 flex flex-col items-center gap-2">

@@ -70,7 +70,17 @@ export default function WalletPage() {
   const [listPrice, setListPrice] = useState('')
   const [listed, setListed] = useState<Set<string>>(new Set())
   const [pendingAction, setPendingAction] = useState<'burn' | 'list'>('burn')
+  const [sealGlyph, setSealGlyph] = useState<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // The holder's resonance signature — stamped on current-game artifacts
+  useEffect(() => {
+    if (!account) { setSealGlyph(null); return }
+    fetch(`/api/signature?account=${encodeURIComponent(account)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setSealGlyph(data?.player ?? null))
+      .catch(() => setSealGlyph(null))
+  }, [account])
 
   useEffect(() => {
     if (!account) { setNfts([]); return }
@@ -304,6 +314,12 @@ export default function WalletPage() {
                               <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
                                 current game
                               </span>
+                            )}
+                            {nft.isCurrent === true && sealGlyph && (
+                              <svg width="14" height="14" viewBox="0 0 32 32" className="shrink-0 text-violet-500 dark:text-violet-400" aria-label="Your resonance signature">
+                                <title>Sealed with your resonance signature</title>
+                                <polygon points={sealGlyph} fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                              </svg>
                             )}
                             {nft.isCurrent === false && (
                               <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">

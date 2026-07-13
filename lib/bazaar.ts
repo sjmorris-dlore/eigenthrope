@@ -1,6 +1,12 @@
-import { GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
+import { ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from './dynamo'
+import { getResetVersion } from './config'
 import { getAliases } from './leaderboard'
+import { fetchVaultTransactions } from './resonance'
+import {
+  buildChapterWeightsIndex, profileFromChoices, signatureGlyphPoints,
+  walletChoicesFromTransactions,
+} from './signature'
 
 const XRPL_RPC = 'https://xrplcluster.com/'
 
@@ -15,6 +21,8 @@ export interface BazaarListing {
   amount_drops: string
   seller: string
   seller_alias?: string
+  /** Seller's resonance signature — polygon points, nothing more */
+  seller_glyph: string
 }
 
 interface MintRecord {
@@ -55,32 +63,37 @@ async function openSellOffers(nftId: string): Promise<SellOffer[]> {
  * offers are private trades.
  */
 export async function getBazaarListings(vaultAddress: string): Promise<BazaarListing[]> {
-  const [mintScan, aliases] = await Promise.all([
+  const [mintScan, chapterScan, aliases, resetVersion, vaultTransactions] = await Promise.all([
     dynamo.send(new ScanCommand({
       TableName: 'eigenthrope_minting',
       ProjectionExpression: 'nft_token_id, choice_point, artifact_type',
     })),
+    dynamo.send(new ScanCommand({
+      TableName: 'eigenthrope_chapters',
+      ProjectionExpression: 'choice_point, universe, chapter, chapter_label, winner_image_key, participation_image_key, choices',
+    })),
     getAliases(),
+    getResetVersion(),
+    fetchVaultTransactions(vaultAddress, 400),
   ])
   const records = (mintScan.Items ?? []) as MintRecord[]
   if (records.length === 0) return []
 
-  // Chapter labels + artifact image keys, fetched once per distinct chapter
-  const chapterMeta = new Map<string, { label?: string; winner?: string; participation?: string }>()
-  for (const cp of new Set(records.map(r => r.choice_point))) {
-    try {
-      const res = await dynamo.send(new GetCommand({
-        TableName: 'eigenthrope_chapters',
-        Key: { choice_point: cp },
-        ProjectionExpression: 'chapter_label, winner_image_key, participation_image_key',
-      }))
-      chapterMeta.set(cp, {
-        label: res.Item?.chapter_label as string | undefined,
-        winner: res.Item?.winner_image_key as string | undefined,
-        participation: res.Item?.participation_image_key as string | undefined,
-      })
-    } catch { chapterMeta.set(cp, {}) }
-  }
+  const chapterItems = (chapterScan.Items ?? []) as {
+    choice_point: string
+    chapter_label?: string
+    winner_image_key?: string
+    participation_image_key?: string
+  }[]
+  const chapterMeta = new Map(chapterItems.map(ch => [ch.choice_point, ch]))
+
+  // Seller signatures: server-side fold of each seller's vote history
+  const weightsIndex = buildChapterWeightsIndex(
+    chapterItems as Parameters<typeof buildChapterWeightsIndex>[0]
+  )
+  const walletChoices = walletChoicesFromTransactions(vaultTransactions, resetVersion)
+  const glyphFor = (account: string) =>
+    signatureGlyphPoints(profileFromChoices(walletChoices.get(account), weightsIndex))
 
   const listings: BazaarListing[] = []
   await Promise.all(records.map(async (record) => {
@@ -94,12 +107,13 @@ export async function getBazaarListings(vaultAddress: string): Promise<BazaarLis
         offer_index: offer.nft_offer_index,
         nft_token_id: record.nft_token_id,
         choice_point: record.choice_point,
-        chapter_label: meta?.label,
+        chapter_label: meta?.chapter_label,
         artifact_type: record.artifact_type,
-        image_key: record.artifact_type === 'winner' ? meta?.winner : meta?.participation,
+        image_key: record.artifact_type === 'winner' ? meta?.winner_image_key : meta?.participation_image_key,
         amount_drops: offer.amount,
         seller: offer.owner,
         seller_alias: aliases.get(offer.owner),
+        seller_glyph: glyphFor(offer.owner),
       })
     }
   }))

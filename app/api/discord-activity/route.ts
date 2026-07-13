@@ -1,5 +1,11 @@
-import { GetCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import { getResetVersion } from '@/lib/config'
+import { fetchVaultTransactions } from '@/lib/resonance'
+import {
+  buildChapterWeightsIndex, profileFromChoices, signatureGlyphPoints,
+  walletChoicesFromTransactions,
+} from '@/lib/signature'
 
 interface PostRecord {
   text: string
@@ -43,6 +49,34 @@ export async function GET() {
   const pulse = (pulseItem?.Item?.value ?? null) as
     { count_24h?: number; last_at?: string | null } | null
 
+  // Observer signatures for the ticker bubbles — polygon points only
+  const glyphs: Record<string, string> = {}
+  try {
+    const vaultAddress = process.env.EIGENTHROPE_VAULT_ADDRESS?.trim()
+    const botsItem = await dynamo.send(new GetCommand({
+      TableName: 'eigenthrope_config',
+      Key: { key: 'bot_addresses' },
+    }))
+    const botAddresses = (botsItem.Item?.value ?? {}) as Record<string, string>
+    if (vaultAddress && Object.keys(botAddresses).length > 0) {
+      const [resetVersion, transactions, chapterScan] = await Promise.all([
+        getResetVersion(),
+        fetchVaultTransactions(vaultAddress, 400),
+        dynamo.send(new ScanCommand({
+          TableName: 'eigenthrope_chapters',
+          ProjectionExpression: 'choice_point, universe, chapter, choices',
+        })),
+      ])
+      const weightsIndex = buildChapterWeightsIndex(
+        (chapterScan.Items ?? []) as Parameters<typeof buildChapterWeightsIndex>[0]
+      )
+      const walletChoices = walletChoicesFromTransactions(transactions, resetVersion)
+      for (const [name, address] of Object.entries(botAddresses)) {
+        glyphs[name] = signatureGlyphPoints(profileFromChoices(walletChoices.get(address), weightsIndex))
+      }
+    }
+  } catch { /* glyphs are cosmetic — never fail the feed */ }
+
   return Response.json(
     {
       posts: posts.slice(0, 8),
@@ -50,6 +84,7 @@ export async function GET() {
         count_24h: pulse?.count_24h ?? 0,
         last_at: pulse?.last_at ?? null,
       },
+      glyphs,
     },
     { headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=300' } },
   )

@@ -29,6 +29,7 @@ interface ChapterRecord {
   story_text?: string | null
   outcome_text?: string | null  // winning choice's outcome, fetched server-side
   epilogue_text?: string | null
+  field_glyph?: string  // the field's star at this chapter's close (polygon points)
 }
 
 interface UniverseRecord {
@@ -191,6 +192,7 @@ export default async function UniverseArchivePage({
             story_text: ch.story_text,
             outcome_text: ch.outcome_text,
             epilogue_text: ch.epilogue_text,
+            field_glyph: ch.field_glyph,
           }))} />
         )}
 

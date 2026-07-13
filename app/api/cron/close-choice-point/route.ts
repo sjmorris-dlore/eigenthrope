@@ -4,6 +4,7 @@ import { getResetVersion } from '@/lib/config'
 import { postDiscord, chapterClosedEmbed } from '@/lib/discord'
 import { scheduleBotReaction } from '@/lib/botTriggers'
 import { fetchVaultTransactions, getLiveWeights } from '@/lib/resonance'
+import { signatureGlyphPoints } from '@/lib/signature'
 import type { ChapterData } from '@/app/api/chapter/route'
 import type { Clue } from '@/lib/clues'
 import { emptyProfile, accumulateWeights } from '@/lib/behavioral'
@@ -199,6 +200,28 @@ export async function GET(request: Request) {
           }))
         )
     )
+  }
+
+  // Snapshot the field's star as it stands after this close (post-accumulation)
+  // — the archive shows the community's shape drifting chapter by chapter.
+  // Points only; the profile itself stays secret.
+  try {
+    const fieldProfileItem = await dynamo.send(new GetCommand({
+      TableName: 'eigenthrope_config',
+      Key: { key: 'behavioral_profile' },
+    }))
+    const fieldProfile = {
+      ...emptyProfile(),
+      ...((fieldProfileItem.Item?.value ?? {}) as Partial<BehavioralProfile>),
+    }
+    await dynamo.send(new UpdateCommand({
+      TableName: 'eigenthrope_chapters',
+      Key: { choice_point: choicePoint },
+      UpdateExpression: 'SET field_glyph = :g',
+      ExpressionAttributeValues: { ':g': signatureGlyphPoints(fieldProfile) },
+    }))
+  } catch (err) {
+    console.error('[close-chapter] field glyph snapshot failed (cosmetic):', err)
   }
 
   // No auto-advance: the game stays on the closed chapter until the admin

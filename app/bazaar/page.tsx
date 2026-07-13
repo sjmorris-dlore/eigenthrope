@@ -50,6 +50,7 @@ export default async function BazaarPage() {
             amount_drops: l.amount_drops,
             seller: l.seller,
             seller_display: l.seller_alias ?? truncate(l.seller),
+            seller_glyph: l.seller_glyph,
           }))}
         />
 

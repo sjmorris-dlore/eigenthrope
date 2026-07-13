@@ -50,6 +50,8 @@ export interface ArchiveChapter {
   story_text?: string | null
   outcome_text?: string | null
   epilogue_text?: string | null
+  /** The field's resonance star as it stood at this chapter's close (polygon points) */
+  field_glyph?: string
 }
 
 function ArchiveChapterCard({
@@ -97,7 +99,13 @@ function ArchiveChapterCard({
         className="w-full scroll-mt-16 rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
       >
         <div className="flex items-center justify-between px-8 pt-6 sm:px-12">
-          <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+          <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+            {chapter.field_glyph && (
+              <svg width="16" height="16" viewBox="0 0 32 32" className="shrink-0 text-sky-500 dark:text-sky-400" aria-label="The field's star at this close">
+                <title>The field&apos;s star as it stood when this chapter closed</title>
+                <polygon points={chapter.field_glyph} fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+            )}
             {chapter.chapter_label}
           </span>
           <button

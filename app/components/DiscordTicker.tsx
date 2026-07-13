@@ -14,6 +14,7 @@ interface ObserverPost {
 interface Activity {
   posts: ObserverPost[]
   pulse: { count_24h: number; last_at: string | null }
+  glyphs?: Record<string, string>
 }
 
 interface Bubble {
@@ -21,6 +22,8 @@ interface Bubble {
   kind: 'post' | 'pulse'
   author?: string
   text?: string
+  /** the author's resonance signature (polygon points) */
+  glyph?: string
   /** horizontal offset so consecutive bubbles don't stack in one column */
   offset: number
 }
@@ -82,6 +85,7 @@ export default function DiscordTicker() {
     // roughly one pulse per 3 human messages in the last 24h, capped.
     const queue: Omit<Bubble, 'id' | 'offset'>[] = activity.posts.map(p => ({
       kind: 'post' as const, author: p.author, text: p.text,
+      glyph: activity.glyphs?.[p.author],
     }))
     const pulseCount = Math.min(4, Math.ceil(activity.pulse.count_24h / 3))
     for (let i = 0; i < pulseCount; i++) {
@@ -120,8 +124,15 @@ export default function DiscordTicker() {
         >
           {b.kind === 'post' ? (
             <span className="block max-w-56 rounded-2xl border border-indigo-200 bg-white/90 px-3 py-2 shadow-sm backdrop-blur dark:border-indigo-900 dark:bg-zinc-900/90">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">
-                💬 {b.author}
+              <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">
+                {b.glyph ? (
+                  <svg width="14" height="14" viewBox="0 0 32 32" className="shrink-0 text-violet-500 dark:text-violet-400" aria-hidden>
+                    <polygon points={b.glyph} fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <span aria-hidden>💬</span>
+                )}
+                {b.author}
               </span>
               <span className="mt-0.5 block text-xs leading-5 text-zinc-600 dark:text-zinc-300">
                 {snippet(b.text ?? '')}
