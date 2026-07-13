@@ -31,3 +31,17 @@ export function accumulateWeights(profile: BehavioralProfile, weights: Behaviora
   }
   return result
 }
+
+/**
+ * Public view of a chapter's choices: label and description ONLY. The
+ * behavioral weights are the game's hidden scoring — they must never reach
+ * a browser. Apply this to every choices object that leaves a public API
+ * or gets passed into a client component.
+ */
+export function publicChoices(
+  choices: Record<string, { label: string; description: string }> | undefined,
+): Record<string, { label: string; description: string }> {
+  return Object.fromEntries(
+    Object.entries(choices ?? {}).map(([id, c]) => [id, { label: c.label, description: c.description }])
+  )
+}

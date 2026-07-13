@@ -1,6 +1,7 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText } from '@/lib/s3'
+import { publicChoices } from '@/lib/behavioral'
 import type { BehavioralWeights, BehavioralProfile } from '@/lib/behavioral'
 import { resolveConditionals } from '@/lib/conditional'
 
@@ -109,6 +110,10 @@ export async function GET() {
 
   return Response.json({
     ...chapter,
+    // Public payload: choice labels/descriptions only — behavioral weights
+    // are hidden scoring; final_weights and behavioral internals stay server-side.
+    choices: publicChoices(chapter.choices),
+    final_weights: undefined,
     story_text: resolve(storyText),
     choice_intro_text: resolve(choiceIntroText),
     outcome_text: resolve(outcomeText),

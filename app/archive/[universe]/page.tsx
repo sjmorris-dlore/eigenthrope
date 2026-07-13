@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ArchiveChapterList from '@/app/components/ArchiveChapterList'
 import DiscordTicker from '@/app/components/DiscordTicker'
+import { publicChoices } from '@/lib/behavioral'
 
 // Revalidate every 5 minutes so NFT ownership stays reasonably fresh
 export const revalidate = 300
@@ -183,7 +184,9 @@ export default async function UniverseArchivePage({
           <ArchiveChapterList chapters={chapters.map(ch => ({
             choice_point: ch.choice_point,
             chapter_label: ch.chapter_label,
-            choices: ch.choices,
+            // Client-component props get serialized into the page — labels
+            // and descriptions only, never the hidden behavioral weights
+            choices: publicChoices(ch.choices),
             winning_choice: ch.winning_choice,
             story_text: ch.story_text,
             outcome_text: ch.outcome_text,

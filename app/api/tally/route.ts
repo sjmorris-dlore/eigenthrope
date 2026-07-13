@@ -1,6 +1,7 @@
 import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion } from '@/lib/config'
+import { publicChoices } from '@/lib/behavioral'
 import { fetchVaultTransactions, getLiveWeights } from '@/lib/resonance'
 import type { ChapterData } from '@/app/api/chapter/route'
 
@@ -99,7 +100,7 @@ export async function GET() {
   if (chapterData?.status === 'closed' && chapterData.final_tally) {
     return Response.json({
       counts: chapterData.final_tally,
-      choices: chapterData.choices ?? {},
+      choices: publicChoices(chapterData.choices),
       cached: false,
       closed: true,
       winning_choice: chapterData.winning_choice,
@@ -118,7 +119,7 @@ export async function GET() {
       return Response.json({
         counts: cached.Item.counts,
         voter_count: cached.Item.voter_count ?? 0,
-        choices: chapterData?.choices ?? {},
+        choices: publicChoices(chapterData?.choices),
         cached: true,
       })
     }
@@ -141,7 +142,7 @@ export async function GET() {
     },
   }))
 
-  return Response.json({ counts, voter_count, choices: chapterData?.choices ?? {}, cached: false })
+  return Response.json({ counts, voter_count, choices: publicChoices(chapterData?.choices), cached: false })
 }
 
 export async function DELETE() {
