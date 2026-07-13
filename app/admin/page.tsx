@@ -9,8 +9,12 @@ import type { BehavioralWeights } from '@/lib/behavioral'
 interface Choice {
   label: string
   description: string
+  /** Stable identifier for story conditionals, e.g. "HonorAutonomy" */
+  name?: string
   behavioral_weights?: BehavioralWeights
 }
+
+const CHOICE_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/
 
 interface ChapterData {
   choice_point: string
@@ -120,19 +124,19 @@ function NewEpisodeForm({
   const [prompt, setPrompt] = useState('')
   const [hours, setHours] = useState(24)
   const [choices, setChoices] = useState([
-    { id: 'A', label: '', description: '' },
-    { id: 'B', label: '', description: '' },
+    { id: 'A', label: '', description: '', name: '' },
+    { id: 'B', label: '', description: '', name: '' },
   ])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  function updateChoice(idx: number, field: 'label' | 'description', val: string) {
+  function updateChoice(idx: number, field: 'label' | 'description' | 'name', val: string) {
     setChoices(prev => prev.map((c, i) => i === idx ? { ...c, [field]: val } : c))
   }
 
   function addChoice() {
     if (choices.length >= 4) return
-    setChoices(prev => [...prev, { id: LETTER_IDS[prev.length], label: '', description: '' }])
+    setChoices(prev => [...prev, { id: LETTER_IDS[prev.length], label: '', description: '', name: '' }])
   }
 
   function removeChoice(idx: number) {
@@ -146,9 +150,16 @@ function NewEpisodeForm({
       setError('Fill in all required fields.')
       return
     }
+    if (choices.some(c => c.name && !CHOICE_NAME_RE.test(c.name))) {
+      setError('Choice names must start with a letter and contain only letters, numbers, and underscores.')
+      return
+    }
     setSaving(true)
     setError('')
-    const choicesMap = Object.fromEntries(choices.map(c => [c.id, { label: c.label, description: c.description }]))
+    const choicesMap = Object.fromEntries(choices.map(c => [
+      c.id,
+      { label: c.label, description: c.description, ...(c.name ? { name: c.name } : {}) },
+    ]))
     const res = await fetch('/api/admin/chapters', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -174,8 +185,17 @@ function NewEpisodeForm({
                 <button type="button" onClick={() => removeChoice(i)} className="text-xs text-zinc-400 hover:text-red-500">✕</button>
               )}
             </div>
-            <div className="pl-5">
+            <div className="pl-5 space-y-1">
               <input value={c.description} onChange={e => updateChoice(i, 'description', e.target.value)} placeholder="Description (optional)" className={smallInputClass} />
+              <input
+                value={c.name}
+                onChange={e => updateChoice(i, 'name', e.target.value)}
+                placeholder="Story name, e.g. HonorAutonomy (optional)"
+                className={`${smallInputClass} font-mono`}
+              />
+              {c.name && !CHOICE_NAME_RE.test(c.name) && (
+                <p className="text-[10px] text-red-500">Letters, numbers, underscores only — must start with a letter.</p>
+              )}
             </div>
           </div>
         ))}
@@ -974,13 +994,20 @@ export default function AdminPage() {
 
   async function saveChoices() {
     if (!editingChoicePoint) return
+    if (Object.values(editingChoices).some(c => c.name && !CHOICE_NAME_RE.test(c.name))) {
+      setChoicesEditStatus('Error: fix invalid story names before saving.')
+      return
+    }
     setSavingChoices(true)
     setChoicesEditStatus('')
     try {
+      const cleaned = Object.fromEntries(
+        Object.entries(editingChoices).map(([id, c]) => [id, c.name ? c : { ...c, name: undefined }])
+      )
       const res = await fetch('/api/admin/chapter-data', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ choice_point: editingChoicePoint, choices: editingChoices }),
+        body: JSON.stringify({ choice_point: editingChoicePoint, choices: cleaned }),
       })
       if (res.ok) {
         setChoicesEditStatus('Saved.')
@@ -1447,6 +1474,15 @@ export default function AdminPage() {
                               placeholder="Description (shown on button)"
                               className={smallInputClass}
                             />
+                            <input
+                              value={c.name ?? ''}
+                              onChange={e => setEditingChoices(prev => ({ ...prev, [id]: { ...prev[id], name: e.target.value } }))}
+                              placeholder="Story name, e.g. HonorAutonomy (optional — used by <!--IF U03:E01:C=='Name'-->)"
+                              className={`${smallInputClass} font-mono`}
+                            />
+                            {c.name && !CHOICE_NAME_RE.test(c.name) && (
+                              <p className="text-[10px] text-red-500">Letters, numbers, underscores only — must start with a letter.</p>
+                            )}
                             <BehavioralWeightGrid
                               weights={c.behavioral_weights ?? {}}
                               onChange={w => setEditingChoices(prev => ({ ...prev, [id]: { ...prev[id], behavioral_weights: w } }))}

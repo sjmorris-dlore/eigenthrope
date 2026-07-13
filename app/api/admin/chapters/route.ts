@@ -1,6 +1,8 @@
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 
+const CHOICE_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/
+
 export async function POST(request: Request) {
   const { universe_id, chapter_label, prompt, choices, voting_hours = 24 } =
     await request.json() as {
@@ -17,6 +19,12 @@ export async function POST(request: Request) {
 
   if (Object.keys(choices).length < 2) {
     return Response.json({ error: 'At least 2 choices are required' }, { status: 400 })
+  }
+
+  for (const [id, c] of Object.entries(choices)) {
+    if (c.name && !CHOICE_NAME_RE.test(c.name)) {
+      return Response.json({ error: `Invalid story name "${c.name}" on choice ${id} — must start with a letter and contain only letters, numbers, underscores.` }, { status: 400 })
+    }
   }
 
   // Find next chapter number for this universe

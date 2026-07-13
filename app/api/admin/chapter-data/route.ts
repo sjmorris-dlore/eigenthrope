@@ -2,6 +2,8 @@ import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import type { BehavioralWeights } from '@/lib/behavioral'
 
+const CHOICE_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/
+
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const choicePoint = url.searchParams.get('choice_point')
@@ -26,7 +28,7 @@ export async function PATCH(request: Request) {
   const body = await request.json() as {
     choice_point: string
     chapter_label?: string
-    choices?: Record<string, { label: string; description: string; behavioral_weights?: BehavioralWeights }>
+    choices?: Record<string, { label: string; description: string; name?: string; behavioral_weights?: BehavioralWeights }>
     prompt?: string
     winner_nft_uri?: string
     participation_nft_uri?: string
@@ -50,6 +52,11 @@ export async function PATCH(request: Request) {
     values[':cl'] = chapter_label
   }
   if (choices) {
+    for (const [id, c] of Object.entries(choices)) {
+      if (c.name && !CHOICE_NAME_RE.test(c.name)) {
+        return Response.json({ error: `Invalid story name "${c.name}" on choice ${id} — must start with a letter and contain only letters, numbers, underscores.` }, { status: 400 })
+      }
+    }
     setParts.push('choices = :choices')
     values[':choices'] = choices
   }
