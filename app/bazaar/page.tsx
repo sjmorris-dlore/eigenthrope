@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getBazaarListings } from '@/lib/bazaar'
-import BazaarCard from '@/app/components/BazaarCard'
+import BazaarGrid from '@/app/components/BazaarGrid'
 
 export const metadata = {
   title: 'Bazaar — Eigenthrope',
@@ -40,28 +40,17 @@ export default async function BazaarPage() {
           </div>
         </div>
 
-        {listings.length === 0 ? (
-          <p className="text-base italic leading-7 text-zinc-400 dark:text-zinc-500">
-            Nothing is for sale right now. Observers are holding.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {listings.map((l) => (
-              <BazaarCard
-                key={l.offer_index}
-                listing={{
-                  offer_index: l.offer_index,
-                  chapter_label: l.chapter_label,
-                  choice_point: l.choice_point,
-                  artifact_type: l.artifact_type,
-                  image_key: l.image_key,
-                  amount_drops: l.amount_drops,
-                  seller_display: l.seller_alias ?? truncate(l.seller),
-                }}
-              />
-            ))}
-          </div>
-        )}
+        <BazaarGrid
+          listings={listings.map((l) => ({
+            offer_index: l.offer_index,
+            chapter_label: l.chapter_label,
+            choice_point: l.choice_point,
+            artifact_type: l.artifact_type,
+            image_key: l.image_key,
+            amount_drops: l.amount_drops,
+            seller_display: l.seller_alias ?? truncate(l.seller),
+          }))}
+        />
 
       </main>
     </div>

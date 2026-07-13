@@ -5,7 +5,7 @@ const SOURCE_TAG = 2606230005
 const XRPL_RPC = 'https://xrplcluster.com/'
 
 type Action =
-  | { action: 'accept'; offer_index: string }
+  | { action: 'accept'; offer_index: string; account?: string }
   | { action: 'list'; nft_token_id: string; amount_xrp: number; account?: string }
   | { action: 'cancel'; offer_index: string; account?: string }
 
@@ -79,13 +79,20 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Only XRP-priced offers are supported' }, { status: 400 })
     }
     const xrp = Number(node.Amount) / 1_000_000
+    // Pin the buyer when the page knows the wallet; otherwise warn — Xaman
+    // signs with whatever wallet is ACTIVE, and artifacts have gone to the
+    // wrong wallet that way.
+    const buyer = body.account?.trim()
+    const pinned = buyer && ACCOUNT_RE.test(buyer)
     return payloadResponse(await createXummPayload(
       {
         TransactionType: 'NFTokenAcceptOffer',
+        ...(pinned ? { Account: buyer } : {}),
         NFTokenSellOffer: body.offer_index,
         SourceTag: SOURCE_TAG,
       },
-      `Acquire this Eigenthrope artifact for ${xrp} XRP. Artifacts carry resonance — your observations will weigh more.`,
+      `Acquire this Eigenthrope artifact for ${xrp} XRP. Artifacts carry resonance — your observations will weigh more.` +
+      (pinned ? '' : ' IMPORTANT: the artifact goes to whichever wallet signs — check the selected wallet in Xaman before you sign.'),
     ))
   }
 

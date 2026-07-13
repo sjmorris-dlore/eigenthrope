@@ -3,6 +3,9 @@ import { dynamo } from './dynamo'
 import { getResetVersion } from './config'
 import { fetchVaultTransactions, getResonanceBreakdown, type ResonanceBreakdown } from './resonance'
 
+// Clio server — supports nft_info (current owner lookup), which xrplcluster doesn't
+const CLIO_RPC = 'https://s2.ripple.com:51234/'
+
 export interface LeaderboardEntry extends ResonanceBreakdown {
   account: string
   /** Player-chosen public display name (opt-in via the wallet page) */
@@ -39,6 +42,35 @@ function getVoterAccounts(transactions: unknown[], resetVersion: number): string
   return [...voters]
 }
 
+/**
+ * Current owners of every minted artifact — so buying an artifact puts you
+ * on the board even before your first vote. Sequential and best-effort:
+ * a failed lookup just means that holder is missing until they vote.
+ */
+async function getArtifactHolders(): Promise<Set<string>> {
+  const holders = new Set<string>()
+  try {
+    const scan = await dynamo.send(new ScanCommand({
+      TableName: 'eigenthrope_minting',
+      ProjectionExpression: 'nft_token_id',
+    }))
+    for (const item of scan.Items ?? []) {
+      const nftId = item.nft_token_id as string
+      try {
+        const res = await fetch(CLIO_RPC, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ method: 'nft_info', params: [{ nft_id: nftId }] }),
+        })
+        const data = await res.json()
+        const owner = data.result?.owner as string | undefined
+        if (owner && !data.result?.is_burned) holders.add(owner)
+      } catch { /* best-effort */ }
+    }
+  } catch { /* best-effort */ }
+  return holders
+}
+
 /** All opt-in aliases, keyed by account. Stored as alias:<account> config items. */
 export async function getAliases(): Promise<Map<string, string>> {
   const aliases = new Map<string, string>()
@@ -73,9 +105,11 @@ export async function getLeaderboard(vaultAddress: string): Promise<LeaderboardE
   // rate limit, which crashed the page.
   const vaultTransactions = await fetchVaultTransactions(vaultAddress, 400)
   const accounts = getVoterAccounts(vaultTransactions, resetVersion)
-  // Bots belong on the board even in a round where they haven't voted yet
-  for (const addr of botAddressMap.keys()) {
-    if (!accounts.includes(addr)) accounts.push(addr)
+  // Bots belong on the board even in a round where they haven't voted yet,
+  // and so does anyone holding an artifact — buying standing counts.
+  const holders = await getArtifactHolders()
+  for (const addr of [...botAddressMap.keys(), ...holders]) {
+    if (addr !== vaultAddress && !accounts.includes(addr)) accounts.push(addr)
   }
 
   // Sequential on purpose: each account still needs its own account_nfts call

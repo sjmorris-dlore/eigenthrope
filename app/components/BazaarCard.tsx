@@ -12,7 +12,7 @@ export interface BazaarCardData {
   seller_display: string
 }
 
-export default function BazaarCard({ listing }: { listing: BazaarCardData }) {
+export default function BazaarCard({ listing, account }: { listing: BazaarCardData; account?: string | null }) {
   const [qr, setQr] = useState<string | null>(null)
   const [signUrl, setSignUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -33,7 +33,7 @@ export default function BazaarCard({ listing }: { listing: BazaarCardData }) {
       const res = await fetch('/api/bazaar/payload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, offer_index: listing.offer_index }),
+        body: JSON.stringify({ action, offer_index: listing.offer_index, account: account ?? undefined }),
       })
       const data = await res.json()
       if (!res.ok) { setError(typeof data.error === 'string' ? data.error : 'Request failed'); setBusy(false); return }
