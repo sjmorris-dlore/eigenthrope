@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       TableName: 'eigenthrope_chapters',
       Key: { choice_point: choicePoint },
       UpdateExpression:
-        'SET #s = :open, voting_closes_at = :deadline REMOVE closed_at, winning_choice, final_tally, final_yield_pct',
+        'SET #s = :open, voting_closes_at = :deadline REMOVE closed_at, winning_choice, final_tally, final_weights, final_yield_pct',
       ExpressionAttributeNames: { '#s': 'status' },
       ExpressionAttributeValues: {
         ':open': 'open',

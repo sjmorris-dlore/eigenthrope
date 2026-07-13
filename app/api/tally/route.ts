@@ -1,9 +1,9 @@
 import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { getResetVersion } from '@/lib/config'
+import { fetchVaultTransactions, getLiveWeights } from '@/lib/resonance'
 import type { ChapterData } from '@/app/api/chapter/route'
 
-const XRPL_RPC = 'https://xrplcluster.com/'
 const TABLE = 'eigenthrope_tallies'
 const CACHE_TTL_MS = 30_000
 
@@ -11,6 +11,12 @@ function fromHex(hex: string) {
   return Buffer.from(hex, 'hex').toString('utf8')
 }
 
+/**
+ * Live tally with LIVE weights: memos decide each voter's choice; weight is
+ * what the voter holds right now. Mirrors the close computation, so the
+ * running display and the final result can't disagree — and trading
+ * artifacts moves the tally until the deadline.
+ */
 async function computeTallyFromChain(
   vaultAddress: string,
   universe: string,
@@ -18,19 +24,9 @@ async function computeTallyFromChain(
   cp: string,
   resetVersion: number
 ): Promise<{ counts: Record<string, number>; voter_count: number }> {
-  const res = await fetch(XRPL_RPC, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      method: 'account_tx',
-      params: [{ account: vaultAddress, limit: 200, forward: false }],
-    }),
-  })
+  const transactions = await fetchVaultTransactions(vaultAddress, 200)
 
-  const data = await res.json()
-  const transactions: unknown[] = data.result?.transactions ?? []
-
-  const latestVote: Record<string, { choice: string; weight: number }> = {}
+  const latestChoice: Record<string, string> = {}
   const seenAccounts = new Set<string>()
 
   for (const entry of transactions) {
@@ -54,7 +50,7 @@ async function computeTallyFromChain(
           vote.choice_point === cp &&
           (vote.rv ?? 0) === resetVersion
         ) {
-          latestVote[sender] = { choice: vote.choice, weight: vote.weight ?? 1 }
+          latestChoice[sender] = vote.choice
           seenAccounts.add(sender)
         }
       } catch {
@@ -63,11 +59,12 @@ async function computeTallyFromChain(
     }
   }
 
+  const weights = await getLiveWeights(Object.keys(latestChoice), vaultAddress, transactions)
   const counts: Record<string, number> = {}
-  for (const { choice, weight } of Object.values(latestVote)) {
-    counts[choice] = (counts[choice] ?? 0) + weight
+  for (const [sender, choice] of Object.entries(latestChoice)) {
+    counts[choice] = (counts[choice] ?? 0) + (weights[sender] ?? 1)
   }
-  return { counts, voter_count: Object.keys(latestVote).length }
+  return { counts, voter_count: Object.keys(latestChoice).length }
 }
 
 export async function GET() {

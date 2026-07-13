@@ -38,6 +38,9 @@ export async function POST(request: Request) {
     // choice_point key segments after migrations (e.g. "C01" vs "E01")
     universe: chapter.universe,
     chapter: chapter.chapter,
+    // Close-time per-voter weights: the winner tier sorts by holdings at
+    // close, not by the vote-time estimate baked into memos
+    final_weights: chapter.final_weights ?? {},
   })
 
   return Response.json({ ok: true, message: 'Minting started — check Lambda logs for progress.' }, { status: 202 })

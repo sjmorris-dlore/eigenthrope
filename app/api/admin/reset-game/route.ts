@@ -71,7 +71,7 @@ export async function POST() {
       dynamo.send(new UpdateCommand({
         TableName: 'eigenthrope_chapters',
         Key: { choice_point: item.choice_point },
-        UpdateExpression: 'SET #s = :open REMOVE winning_choice, final_tally',
+        UpdateExpression: 'SET #s = :open REMOVE winning_choice, final_tally, final_weights',
         ExpressionAttributeNames: { '#s': 'status' },
         ExpressionAttributeValues: { ':open': 'open' },
       }))

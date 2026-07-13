@@ -3,12 +3,12 @@ import { dynamo } from '@/lib/dynamo'
 import { getResetVersion } from '@/lib/config'
 import { postDiscord, chapterClosedEmbed } from '@/lib/discord'
 import { scheduleBotReaction } from '@/lib/botTriggers'
+import { fetchVaultTransactions, getLiveWeights } from '@/lib/resonance'
 import type { ChapterData } from '@/app/api/chapter/route'
 import type { Clue } from '@/lib/clues'
 import { emptyProfile, accumulateWeights } from '@/lib/behavioral'
 import type { BehavioralProfile } from '@/lib/behavioral'
 
-const XRPL_RPC = 'https://xrplcluster.com/'
 const MIN_YIELD = 0.05
 const MAX_YIELD = 0.25
 
@@ -21,24 +21,22 @@ function fromHex(hex: string) {
   return Buffer.from(hex, 'hex').toString('utf8')
 }
 
+/**
+ * Final tally with CLOSE-TIME weights: memos decide each voter's choice, but
+ * weight comes from what the voter holds at the moment of closing. Trading
+ * artifacts therefore matters until the deadline — and one artifact can only
+ * ever boost one voter per round, since at close it sits in a single wallet.
+ * The weight in the vote memo is a display-time estimate only.
+ */
 async function computeFinalTally(
   vaultAddress: string,
   universe: string,
   chapter: string,
   cp: string,
   resetVersion: number
-): Promise<Record<string, number>> {
-  const res = await fetch(XRPL_RPC, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      method: 'account_tx',
-      params: [{ account: vaultAddress, limit: 200, forward: false }],
-    }),
-  })
-  const data = await res.json()
-  const transactions: unknown[] = data.result?.transactions ?? []
-  const latestVote: Record<string, { choice: string; weight: number }> = {}
+): Promise<{ counts: Record<string, number>; weights: Record<string, number> }> {
+  const transactions = await fetchVaultTransactions(vaultAddress, 200)
+  const latestChoice: Record<string, string> = {}
   const seen = new Set<string>()
 
   for (const entry of transactions) {
@@ -59,18 +57,19 @@ async function computeFinalTally(
           vote.choice_point === cp &&
           (vote.rv ?? 0) === resetVersion
         ) {
-          latestVote[sender] = { choice: vote.choice, weight: vote.weight ?? 1 }
+          latestChoice[sender] = vote.choice
           seen.add(sender)
         }
       } catch { /* skip */ }
     }
   }
 
+  const weights = await getLiveWeights(Object.keys(latestChoice), vaultAddress, transactions)
   const counts: Record<string, number> = {}
-  for (const { choice, weight } of Object.values(latestVote)) {
-    counts[choice] = (counts[choice] ?? 0) + weight
+  for (const [sender, choice] of Object.entries(latestChoice)) {
+    counts[choice] = (counts[choice] ?? 0) + (weights[sender] ?? 1)
   }
-  return counts
+  return { counts, weights }
 }
 
 export async function GET(request: Request) {
@@ -113,7 +112,8 @@ export async function GET(request: Request) {
   // Use stored universe/chapter fields, not key segments — they may differ after migrations.
   const cp = choicePoint.split(':')[2]
   const resetVersion = await getResetVersion()
-  let finalTally = await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion)
+  let { counts: finalTally, weights: finalWeights } =
+    await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion)
 
   let total = Object.values(finalTally).reduce((a, b) => a + b, 0)
   if (total === 0) {
@@ -123,7 +123,8 @@ export async function GET(request: Request) {
       `Retrying in 5s...`
     )
     await new Promise(r => setTimeout(r, 5000))
-    finalTally = await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion)
+    ;({ counts: finalTally, weights: finalWeights } =
+      await computeFinalTally(vaultAddress, chapter.universe, chapter.chapter, cp, resetVersion))
     total = Object.values(finalTally).reduce((a, b) => a + b, 0)
     if (total === 0) {
       console.error(`[close-chapter] Retry also returned 0 votes. Proceeding with empty tally.`)
@@ -141,7 +142,7 @@ export async function GET(request: Request) {
     TableName: 'eigenthrope_chapters',
     Key: { choice_point: choicePoint },
     UpdateExpression: `SET #s = :closed, closed_at = :now, winning_choice = :wc,
-                       final_tally = :ft, final_yield_pct = :yp`,
+                       final_tally = :ft, final_weights = :fw, final_yield_pct = :yp`,
     ConditionExpression: '#s = :open',
     ExpressionAttributeNames: { '#s': 'status' },
     ExpressionAttributeValues: {
@@ -150,6 +151,7 @@ export async function GET(request: Request) {
       ':now': new Date().toISOString(),
       ':wc': winningChoice,
       ':ft': finalTally,
+      ':fw': finalWeights, // close-time per-voter weights — the mint winner tier sorts by these
       ':yp': yieldPct,
     },
   }))

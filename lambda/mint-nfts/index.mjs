@@ -72,6 +72,7 @@ export async function handler(event) {
     bot_addresses, // observer-bot wallets — excluded from the winner tier when humans are in it
     universe: eventUniverse, // stored chapter fields — may differ from the key
     chapter: eventChapter,   // segments after migrations (e.g. "C01" vs "E01")
+    final_weights, // close-time per-voter weights — override the memo estimates
   } = event
 
   const sm = new SecretsManagerClient({ region: 'us-east-1' })
@@ -128,7 +129,10 @@ export async function handler(event) {
             vote.choice_point === cp &&
             (vote.rv ?? 0) === reset_version
           ) {
-            allVoters[sender] = { choice: vote.choice, weight: vote.weight ?? 1 }
+            // Close-time weight when the close recorded one; the memo's
+            // vote-time estimate only as fallback for legacy chapters.
+            const weight = final_weights?.[sender] ?? vote.weight ?? 1
+            allVoters[sender] = { choice: vote.choice, weight }
             seen.add(sender)
           }
         } catch {}

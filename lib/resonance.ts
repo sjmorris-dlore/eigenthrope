@@ -197,3 +197,28 @@ export async function getResonance(
   const { resonance } = await getResonanceBreakdown(account, vaultAddress)
   return resonance
 }
+
+/**
+ * Live weights for a set of voters, computed from what each holds RIGHT NOW.
+ * This is what makes artifact transfers matter until a chapter closes — and
+ * what stops one artifact from boosting several votes in the same round
+ * (at close it sits in exactly one wallet). Sequential per account; pass the
+ * shared vault tx list to keep the XRPL cluster happy.
+ */
+export async function getLiveWeights(
+  accounts: string[],
+  vaultAddress: string,
+  vaultTransactions?: unknown[],
+): Promise<Record<string, number>> {
+  const transactions = vaultTransactions ?? await fetchVaultTransactions(vaultAddress)
+  const weights: Record<string, number> = {}
+  for (const account of accounts) {
+    try {
+      const { resonance } = await getResonanceBreakdown(account, vaultAddress, transactions)
+      weights[account] = resonance
+    } catch {
+      weights[account] = 1 // never let one bad lookup zero out a voter
+    }
+  }
+  return weights
+}

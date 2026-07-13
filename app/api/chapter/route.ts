@@ -27,6 +27,8 @@ export interface ChapterData {
   epilogue_key?: string
   winning_choice?: string
   final_tally?: Record<string, number>
+  /** Close-time per-voter weights — the mint winner tier sorts by these */
+  final_weights?: Record<string, number>
   final_yield_pct?: number
   winner_nft_uri?: string
   participation_nft_uri?: string
