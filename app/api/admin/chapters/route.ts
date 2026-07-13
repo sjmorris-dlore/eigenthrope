@@ -7,7 +7,7 @@ export async function POST(request: Request) {
       universe_id: string
       chapter_label: string
       prompt: string
-      choices: Record<string, { label: string; description: string }>
+      choices: Record<string, { label: string; description: string; name?: string }>
       voting_hours?: number
     }
 

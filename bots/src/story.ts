@@ -1,6 +1,7 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo, fetchStoryText } from './aws.js'
 import { CONFIG_TABLE, CHAPTERS_TABLE } from './config.js'
+import { resolveStoryTexts } from './conditional.js'
 
 export interface Choice {
   label: string
@@ -94,6 +95,9 @@ export async function loadGameContext(which: 'active' | 'previous'): Promise<Gam
     if (outcomeKey) outcomeText = (await fetchStoryText(outcomeKey)) ?? undefined
   }
 
+  // Resolve conditional story blocks — bots must never see unchosen branches
+  const [resolvedStory, resolvedOutcome] = await resolveStoryTexts([parts.join('\n\n'), outcomeText])
+
   return {
     choicePoint,
     universe: record.universe ?? universe,
@@ -101,8 +105,8 @@ export async function loadGameContext(which: 'active' | 'previous'): Promise<Gam
     cp,
     resetVersion,
     record,
-    storyText: parts.join('\n\n'),
-    outcomeText,
+    storyText: resolvedStory ?? '',
+    outcomeText: resolvedOutcome,
     winningLabel,
   }
 }

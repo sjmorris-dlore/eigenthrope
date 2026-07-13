@@ -1,6 +1,7 @@
 import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { putStoryText } from '@/lib/s3'
+import { validateConditionals } from '@/lib/conditional'
 
 export async function POST(request: Request) {
   const { choice_point, type, content, choice_id } = await request.json() as {
@@ -12,6 +13,11 @@ export async function POST(request: Request) {
 
   if (!choice_point || !type || !content) {
     return Response.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  const conditionalErrors = await validateConditionals(content)
+  if (conditionalErrors.length > 0) {
+    return Response.json({ error: 'Conditional markup errors — not saved', details: conditionalErrors }, { status: 400 })
   }
 
   const [universe, chapter] = choice_point.split(':')

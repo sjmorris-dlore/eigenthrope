@@ -3,11 +3,13 @@ import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText } from '@/lib/s3'
 import { publicChoices } from '@/lib/behavioral'
 import type { BehavioralWeights, BehavioralProfile } from '@/lib/behavioral'
-import { resolveConditionals } from '@/lib/conditional'
+import { resolveConditionals, loadChoiceContext } from '@/lib/conditional'
 
 export interface Choice {
   label: string
   description: string
+  /** Stable identifier for story conditionals, e.g. "HonorAutonomy" — server-side only */
+  name?: string
   behavioral_weights?: BehavioralWeights
 }
 
@@ -96,7 +98,10 @@ export async function GET() {
   ])
 
   const profile = (profileItem.Item?.value ?? {}) as Partial<BehavioralProfile>
-  const resolve = (t: string | null) => t ? resolveConditionals(t, profile) : undefined
+  const choiceCtx = await loadChoiceContext([
+    storyText, choiceIntroText, outcomeText, epilogueText, prevOutcomeText, prevEpilogueText,
+  ])
+  const resolve = (t: string | null) => t ? resolveConditionals(t, profile, choiceCtx) : undefined
 
   const predecessor = prevChapter ? {
     choice_point: prevChoicePoint!,

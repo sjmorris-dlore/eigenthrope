@@ -6,6 +6,7 @@ import { dynamo } from '@/lib/dynamo'
 import { fetchStoryText, putStoryText } from '@/lib/s3'
 import type { Clue } from '@/lib/clues'
 import { triggersToCell } from '@/lib/clues'
+import { validateConditionals } from '@/lib/conditional'
 import type { ChapterData } from '@/app/api/chapter/route'
 
 const CHAPTERS_TABLE = 'eigenthrope_chapters'
@@ -157,6 +158,8 @@ function buildServer() {
         z.object({
           label: z.string(),
           description: z.string(),
+          name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).optional()
+            .describe('Stable identifier for story conditionals, e.g. "HonorAutonomy"'),
         })
       ).describe('At least 2 choices keyed by ID (A, B, C, D)'),
       voting_hours: z.number().default(24).describe('How long voting stays open in hours'),
@@ -214,7 +217,12 @@ function buildServer() {
       prompt: z.string().optional(),
       choices: z.record(
         z.string(),
-        z.object({ label: z.string(), description: z.string() })
+        z.object({
+          label: z.string(),
+          description: z.string(),
+          name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).optional()
+            .describe('Stable identifier for story conditionals, e.g. "HonorAutonomy"'),
+        })
       ).optional().describe('Replaces the entire choices map if provided'),
       voting_closes_at: z.string().optional().describe('ISO 8601 datetime'),
     },
@@ -334,6 +342,11 @@ function buildServer() {
     async ({ choice_point, type, content, choice_id }) => {
       if (type === 'choice_outcome' && !choice_id) {
         return { content: [{ type: 'text', text: 'choice_id is required for choice_outcome.' }] }
+      }
+
+      const conditionalErrors = await validateConditionals(content)
+      if (conditionalErrors.length > 0) {
+        return { content: [{ type: 'text', text: `NOT SAVED — conditional markup errors:\n- ${conditionalErrors.join('\n- ')}` }] }
       }
 
       const [universe, chapter] = choice_point.split(':')

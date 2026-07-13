@@ -5,7 +5,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ArchiveChapterList from '@/app/components/ArchiveChapterList'
 import DiscordTicker from '@/app/components/DiscordTicker'
-import { publicChoices } from '@/lib/behavioral'
+import { publicChoices, emptyProfile } from '@/lib/behavioral'
+import type { BehavioralProfile } from '@/lib/behavioral'
+import { resolveConditionals, loadChoiceContext } from '@/lib/conditional'
 
 // Revalidate every 5 minutes so NFT ownership stays reasonably fresh
 export const revalidate = 300
@@ -71,7 +73,7 @@ async function getChapters(universeId: string): Promise<ChapterRecord[]> {
   const chapters = ((result.Items ?? []) as ChapterRecord[])
     .sort((a, b) => a.chapter.localeCompare(b.chapter))
 
-  return Promise.all(
+  const withTexts = await Promise.all(
     chapters.map(async (ch) => {
       const winningOutcomeKey = ch.winning_choice
         ? ch.choice_outcomes?.[ch.winning_choice]
@@ -84,6 +86,24 @@ async function getChapters(universeId: string): Promise<ChapterRecord[]> {
       return { ...ch, story_text: storyText, outcome_text: outcomeText, epilogue_text: epilogueText }
     })
   )
+
+  // Resolve conditional blocks server-side — raw markers would leak both
+  // branches (and trait names) into the page payload.
+  const allTexts = withTexts.flatMap(ch => [ch.story_text, ch.outcome_text, ch.epilogue_text])
+  const [choiceCtx, profileItem] = await Promise.all([
+    loadChoiceContext(allTexts),
+    dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'behavioral_profile' } })),
+  ])
+  const profile = { ...emptyProfile(), ...((profileItem.Item?.value ?? {}) as Partial<BehavioralProfile>) }
+  const resolve = (t: string | null | undefined) =>
+    t ? resolveConditionals(t, profile, choiceCtx) : t ?? null
+
+  return withTexts.map(ch => ({
+    ...ch,
+    story_text: resolve(ch.story_text),
+    outcome_text: resolve(ch.outcome_text),
+    epilogue_text: resolve(ch.epilogue_text),
+  }))
 }
 
 // Returns unique current holders of winner NFTs (taxon 1) for this universe.

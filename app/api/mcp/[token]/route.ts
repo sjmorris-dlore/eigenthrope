@@ -9,6 +9,7 @@ import { triggersToCell } from '@/lib/clues'
 import type { ChapterData } from '@/app/api/chapter/route'
 import { BEHAVIORAL_TRAITS, emptyProfile, accumulateWeights } from '@/lib/behavioral'
 import type { BehavioralProfile } from '@/lib/behavioral'
+import { validateConditionals } from '@/lib/conditional'
 
 const CHAPTERS_TABLE = 'eigenthrope_chapters'
 const UNIVERSES_TABLE = 'eigenthrope_universes'
@@ -178,6 +179,8 @@ function buildServer() {
         z.object({
           label: z.string(),
           description: z.string(),
+          name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).optional()
+            .describe('Stable identifier for story conditionals, e.g. "HonorAutonomy"'),
           behavioral_weights: z.record(z.string(), z.number()).optional()
             .describe(`Trait weights for this choice, -5 to +5. Traits: ${BEHAVIORAL_TRAITS.join(', ')}`),
         })
@@ -231,6 +234,8 @@ function buildServer() {
       choices: z.record(z.string(), z.object({
         label: z.string(),
         description: z.string(),
+        name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).optional()
+          .describe('Stable identifier for story conditionals, e.g. "HonorAutonomy"'),
         behavioral_weights: z.record(z.string(), z.number()).optional(),
       })).optional(),
       voting_closes_at: z.string().optional().describe('ISO 8601 datetime'),
@@ -329,6 +334,10 @@ function buildServer() {
     async ({ choice_point, type, content, choice_id }) => {
       if (type === 'choice_outcome' && !choice_id) {
         return { content: [{ type: 'text', text: 'choice_id is required for choice_outcome.' }] }
+      }
+      const conditionalErrors = await validateConditionals(content)
+      if (conditionalErrors.length > 0) {
+        return { content: [{ type: 'text', text: `NOT SAVED — conditional markup errors:\n- ${conditionalErrors.join('\n- ')}` }] }
       }
       const [universe, chapter] = choice_point.split(':')
       let s3Key: string
