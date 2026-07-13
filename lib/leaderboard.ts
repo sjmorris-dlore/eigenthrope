@@ -2,6 +2,10 @@ import { GetCommand, ScanCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from './dynamo'
 import { getResetVersion } from './config'
 import { fetchVaultTransactions, getResonanceBreakdown, type ResonanceBreakdown } from './resonance'
+import {
+  buildChapterWeightsIndex, profileFromChoices, signatureGlyphPoints,
+  walletChoicesFromTransactions,
+} from './signature'
 
 // Clio server — supports nft_info (current owner lookup), which xrplcluster doesn't
 const CLIO_RPC = 'https://s2.ripple.com:51234/'
@@ -12,6 +16,8 @@ export interface LeaderboardEntry extends ResonanceBreakdown {
   alias?: string
   /** Set for the game's own observer bots — displayed by name with a badge */
   bot_name?: string
+  /** Resonance signature — SVG polygon points, the profile's only public projection */
+  glyph: string
 }
 
 function fromHex(hex: string) {
@@ -112,6 +118,17 @@ export async function getLeaderboard(vaultAddress: string): Promise<LeaderboardE
     if (addr !== vaultAddress && !accounts.includes(addr)) accounts.push(addr)
   }
 
+  // Resonance signatures: fold each wallet's vote history into its hidden
+  // behavioral profile server-side; only the star's coordinates leave here.
+  const chapterScan = await dynamo.send(new ScanCommand({
+    TableName: 'eigenthrope_chapters',
+    ProjectionExpression: 'choice_point, universe, chapter, choices',
+  }))
+  const weightsIndex = buildChapterWeightsIndex(
+    (chapterScan.Items ?? []) as Parameters<typeof buildChapterWeightsIndex>[0]
+  )
+  const walletChoices = walletChoicesFromTransactions(vaultTransactions, resetVersion)
+
   // Sequential on purpose: each account still needs its own account_nfts call
   const entries: LeaderboardEntry[] = []
   for (const account of accounts) {
@@ -121,6 +138,7 @@ export async function getLeaderboard(vaultAddress: string): Promise<LeaderboardE
       ...breakdown,
       alias: aliases.get(account),
       bot_name: botAddressMap.get(account),
+      glyph: signatureGlyphPoints(profileFromChoices(walletChoices.get(account), weightsIndex)),
     })
   }
 

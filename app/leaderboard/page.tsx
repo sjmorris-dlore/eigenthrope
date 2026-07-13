@@ -51,6 +51,18 @@ export default async function LeaderboardPage() {
             {entries.map((e, i) => (
               <div key={e.account} className="flex items-center gap-4 py-5 first:pt-0">
                 <span className="w-8 text-right font-mono text-sm text-zinc-400">{i + 1}</span>
+                <svg
+                  width="30" height="30" viewBox="0 0 32 32"
+                  className="shrink-0 text-violet-500 dark:text-violet-400"
+                  aria-label="Resonance signature"
+                >
+                  <title>Resonance signature — how this observer chooses</title>
+                  <polygon
+                    points={e.glyph}
+                    fill="currentColor" fillOpacity="0.15"
+                    stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"
+                  />
+                </svg>
                 <div className="min-w-0 flex-1">
                   <span className="block truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
                     {e.bot_name ?? e.alias ?? truncate(e.account)}
