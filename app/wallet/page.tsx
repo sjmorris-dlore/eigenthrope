@@ -191,7 +191,7 @@ export default function WalletPage() {
     const res = await fetch('/api/bazaar/payload', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'list', nft_token_id: nft.NFTokenID, amount_xrp: amountXrp }),
+      body: JSON.stringify({ action: 'list', nft_token_id: nft.NFTokenID, amount_xrp: amountXrp, account }),
     })
     const data = await res.json()
     if (!res.ok) {

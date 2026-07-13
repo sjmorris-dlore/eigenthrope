@@ -6,8 +6,10 @@ const XRPL_RPC = 'https://xrplcluster.com/'
 
 type Action =
   | { action: 'accept'; offer_index: string }
-  | { action: 'list'; nft_token_id: string; amount_xrp: number }
-  | { action: 'cancel'; offer_index: string }
+  | { action: 'list'; nft_token_id: string; amount_xrp: number; account?: string }
+  | { action: 'cancel'; offer_index: string; account?: string }
+
+const ACCOUNT_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/
 
 async function ledgerEntry(index: string): Promise<Record<string, unknown> | null> {
   try {
@@ -101,9 +103,14 @@ export async function POST(request: Request) {
       return Response.json({ error: 'Not a known Eigenthrope artifact' }, { status: 404 })
     }
     const drops = String(Math.round(amountXrp * 1_000_000))
+    // Pin the signer to the wallet that holds the NFT — without Account,
+    // Xaman signs with whatever wallet is active, which fails tecNO_ENTRY
+    // when that wallet doesn't hold this token.
+    const account = body.account?.trim()
     return payloadResponse(await createXummPayload(
       {
         TransactionType: 'NFTokenCreateOffer',
+        ...(account && ACCOUNT_RE.test(account) ? { Account: account } : {}),
         NFTokenID: body.nft_token_id,
         Amount: drops,
         Flags: 1, // tfSellNFToken
