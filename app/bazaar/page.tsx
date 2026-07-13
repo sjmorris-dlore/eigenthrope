@@ -48,6 +48,7 @@ export default async function BazaarPage() {
             artifact_type: l.artifact_type,
             image_key: l.image_key,
             amount_drops: l.amount_drops,
+            seller: l.seller,
             seller_display: l.seller_alias ?? truncate(l.seller),
           }))}
         />

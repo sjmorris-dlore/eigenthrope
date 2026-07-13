@@ -9,6 +9,7 @@ export interface BazaarCardData {
   artifact_type: 'winner' | 'participation'
   image_key?: string
   amount_drops: string
+  seller: string
   seller_display: string
 }
 
@@ -105,21 +106,26 @@ export default function BazaarCard({ listing, account }: { listing: BazaarCardDa
         </div>
       ) : (
         <div className="mt-3 flex items-center justify-between gap-2">
-          <button
-            onClick={() => run('accept')}
-            disabled={busy}
-            className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-          >
-            Buy · {xrp} XRP
-          </button>
-          <button
-            onClick={() => run('cancel')}
-            disabled={busy}
-            title="Sellers only — the ledger rejects anyone else's signature"
-            className="text-[11px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-          >
-            Withdraw
-          </button>
+          {account === listing.seller ? (
+            <>
+              <span className="text-xs text-zinc-400">Your listing · {xrp} XRP</span>
+              <button
+                onClick={() => run('cancel')}
+                disabled={busy}
+                className="rounded border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-zinc-100"
+              >
+                Withdraw
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => run('accept')}
+              disabled={busy}
+              className="rounded bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            >
+              Buy · {xrp} XRP
+            </button>
+          )}
         </div>
       )}
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
