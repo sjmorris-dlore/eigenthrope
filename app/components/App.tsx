@@ -7,6 +7,7 @@ import ArtifactClaim from './ArtifactClaim'
 import Vote from './Vote'
 import WaveformDisplay from './WaveformDisplay'
 import ChapterArtifact from './ChapterArtifact'
+import SignatureCard from './SignatureCard'
 import Tally from './Tally'
 
 interface TallyData {
@@ -54,6 +55,7 @@ export default function App() {
               <ObserverProfile key={`${account}-${profileEpoch}`} account={account} />
             </div>
           )}
+          <SignatureCard key={`sig-${account ?? 'anon'}-${profileEpoch}`} account={account} />
           <WaveformDisplay counts={tally?.counts ?? null} />
           <ChapterArtifact />
         </aside>
