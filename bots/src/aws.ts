@@ -5,7 +5,11 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { AWS_REGION, STORIES_BUCKET } from './config.js'
 
 // Credentials resolve from the standard AWS env vars / provider chain.
-export const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }))
+// removeUndefinedValues: optional fields (e.g. a pending post's `context`)
+// are legitimately undefined — without this the whole write throws.
+export const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }), {
+  marshallOptions: { removeUndefinedValues: true },
+})
 
 const s3 = new S3Client({ region: AWS_REGION })
 const secrets = new SecretsManagerClient({ region: AWS_REGION })
