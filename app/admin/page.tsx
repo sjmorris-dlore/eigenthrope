@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { LibraryChapter } from '@/app/api/admin/nft-library/route'
 import { BEHAVIORAL_TRAITS } from '@/lib/behavioral'
 import type { BehavioralWeights } from '@/lib/behavioral'
+import AdminRecordJudge from '@/app/components/AdminRecordJudge'
 
 interface Choice {
   label: string
@@ -1703,6 +1704,13 @@ export default function AdminPage() {
                   <ActionStatus message={resetGameStatus} />
                 </div>
               </div>
+            </Section>
+
+<Section title="The Record">
+              <p className="mb-4 text-xs text-zinc-400 dark:text-zinc-600">
+                Sealed observations. Judging is reveal-driven — you only ever act on entries a player has chosen to reveal, and your verdict is canon.
+              </p>
+              <AdminRecordJudge />
             </Section>
 
 <Section title="Behavioral Profile">
