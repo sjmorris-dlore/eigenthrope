@@ -3,6 +3,10 @@
  * to the winner for 0 XRP, then write the final record to eigenthrope_artifacts
  * (where the claim UI reads from) and mark the minting record 'offered'.
  *
+ * On success, also writes a timestamp signal to eigenthrope_config
+ * (key: bot_claim_signal) so the observer bots' scheduler can claim their new
+ * offers on its next tick (~60s) instead of waiting for its periodic sweep.
+ *
  * Safe to re-run — skips records already in 'offered' status.
  *
  * Required Lambda env vars:
@@ -12,6 +16,7 @@
  *   secretsmanager:GetSecretValue on the vault secret
  *   dynamodb:Query/UpdateItem on eigenthrope_minting
  *   dynamodb:PutItem on eigenthrope_artifacts
+ *   dynamodb:PutItem on eigenthrope_config
  */
 
 import { Client, Wallet } from 'xrpl'
@@ -22,6 +27,7 @@ import { DynamoDBDocumentClient, QueryCommand, UpdateCommand, PutCommand } from 
 const SOURCE_TAG = 2606230005
 const MINTING_TABLE = 'eigenthrope_minting'
 const ARTIFACTS_TABLE = 'eigenthrope_artifacts'
+const CONFIG_TABLE = 'eigenthrope_config'
 const OFFER_EXPIRY_DAYS = 14
 const XRPL_WSS = 'wss://xrplcluster.com/'
 
@@ -128,6 +134,21 @@ export async function handler(event) {
     }
   } finally {
     await client.disconnect()
+  }
+
+  // Signal the bots: new offers exist, claim them on your next tick instead
+  // of waiting for the periodic sweep. Best-effort — a failed signal write
+  // just means the bots fall back to their normal safety-net interval.
+  if (results.offers_created > 0) {
+    try {
+      await dynamo.send(new PutCommand({
+        TableName: CONFIG_TABLE,
+        Item: { key: 'bot_claim_signal', value: new Date().toISOString() },
+      }))
+      console.log(`Signaled bots: ${results.offers_created} new offer(s)`)
+    } catch (err) {
+      console.error('Failed to write bot_claim_signal (non-fatal):', err)
+    }
   }
 
   return results

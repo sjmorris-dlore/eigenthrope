@@ -56,6 +56,15 @@ export async function getResetVersion(): Promise<number> {
 }
 
 /**
+ * Timestamp the create-offers Lambda writes after minting new NFT sell
+ * offers — lets the scheduler claim them on its next tick instead of
+ * waiting for the periodic safety-net sweep. Null if never signaled.
+ */
+export async function getBotClaimSignal(): Promise<string | null> {
+  return ((await getConfigValue('bot_claim_signal')) as string | undefined) ?? null
+}
+
+/**
  * Load the game context for a trigger. Episode-open posts react to the active
  * choice point; vote-close posts react to the just-closed (previous) one.
  *

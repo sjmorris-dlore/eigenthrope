@@ -2,7 +2,7 @@ import { CHARACTERS, inIdleWindow } from './characters.js'
 import { getCharacterState, claimPendingPost, allPendingPosts, schedulePendingPost, type CharacterState } from './state.js'
 import { executePost } from './poster.js'
 import { claimPendingArtifacts } from './artifacts.js'
-import { getTestMode } from './story.js'
+import { getTestMode, getBotClaimSignal } from './story.js'
 import {
   CLAIM_INTERVAL_MS_PROD, CLAIM_INTERVAL_MS_TEST, POLL_INTERVAL_MS,
   IDLE_CHANCE_PER_TICK_PROD, IDLE_CHANCE_PER_TICK_TEST,
@@ -11,14 +11,28 @@ import {
 } from './config.js'
 
 let lastClaimCheck = 0
+let lastSeenClaimSignal: string | null = null
 
-/** Periodically claim NFT offers the game has extended to the bot wallets. */
+/**
+ * Claim NFT offers the game has extended to the bot wallets. Primarily
+ * signal-driven: the create-offers Lambda writes bot_claim_signal the
+ * moment new offers exist, and that's checked (cheaply — one small config
+ * read) every tick, so claims land within ~60s of minting instead of
+ * waiting on a timer. CLAIM_INTERVAL_MS is now just a safety-net sweep in
+ * case a signal write is ever missed.
+ */
 async function maybeClaimArtifacts(): Promise<void> {
-  const interval = (await getTestMode()) ? CLAIM_INTERVAL_MS_TEST : CLAIM_INTERVAL_MS_PROD
-  if (Date.now() - lastClaimCheck < interval) return
+  const [testMode, signal] = await Promise.all([getTestMode(), getBotClaimSignal()])
+  const signalIsNew = signal !== null && signal !== lastSeenClaimSignal
+  if (signal !== null) lastSeenClaimSignal = signal
+
+  const interval = testMode ? CLAIM_INTERVAL_MS_TEST : CLAIM_INTERVAL_MS_PROD
+  if (!signalIsNew && Date.now() - lastClaimCheck < interval) return
   lastClaimCheck = Date.now()
+
   try {
     await claimPendingArtifacts()
+    if (signalIsNew) console.log(`[scheduler] artifact claim triggered by mint signal (${signal})`)
   } catch (err) {
     console.error('[scheduler] artifact claim pass failed:', err)
   }

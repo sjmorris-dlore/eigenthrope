@@ -47,10 +47,12 @@ export const CHAPTERS_TABLE = 'eigenthrope_chapters'
 
 // Scheduling (ms)
 export const POLL_INTERVAL_MS = 60_000
-export const CLAIM_INTERVAL_MS_PROD = 30 * 60_000 // check for claimable NFT offers every 30min
-// Test-mode timing runs 1.5x slower than the original fast values (was 2min) —
-// still far faster than prod, just enough slower to read posts as they land.
-export const CLAIM_INTERVAL_MS_TEST = 3 * 60_000  // every 3min in test mode
+// NFT claiming is now primarily signal-driven (create-offers Lambda writes
+// bot_claim_signal the moment offers exist; the scheduler checks it every
+// tick, ~60s latency). These intervals are just a safety-net sweep in case
+// a signal write is ever missed — hence the long, relaxed values.
+export const CLAIM_INTERVAL_MS_PROD = 6 * 3600_000 // safety-net sweep every 6h
+export const CLAIM_INTERVAL_MS_TEST = 15 * 60_000  // safety-net sweep every 15min in test mode
 
 // Peer response: after a bot reacts to a game event, each OTHER bot may respond
 export const PEER_DELAY_MS_PROD: [number, number] = [30 * 60_000, 90 * 60_000] // 30–90min

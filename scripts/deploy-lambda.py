@@ -179,6 +179,10 @@ def get_or_create_role(iam_client, account_id: str) -> str:
                     f"arn:aws:dynamodb:{REGION}:{account_id}:table/eigenthrope_minting/index/*",
                     f"arn:aws:dynamodb:{REGION}:{account_id}:table/eigenthrope_artifacts",
                     f"arn:aws:dynamodb:{REGION}:{account_id}:table/eigenthrope_artifacts/index/*",
+                    # create-offers writes bot_claim_signal here after minting,
+                    # so the observer bots can claim new offers immediately
+                    # instead of waiting on their periodic safety-net sweep.
+                    f"arn:aws:dynamodb:{REGION}:{account_id}:table/eigenthrope_config",
                 ],
             },
         ],
