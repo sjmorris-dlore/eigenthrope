@@ -48,27 +48,29 @@ export const CHAPTERS_TABLE = 'eigenthrope_chapters'
 // Scheduling (ms)
 export const POLL_INTERVAL_MS = 60_000
 export const CLAIM_INTERVAL_MS_PROD = 30 * 60_000 // check for claimable NFT offers every 30min
-export const CLAIM_INTERVAL_MS_TEST = 2 * 60_000  // every 2min in test mode
+// Test-mode timing runs 1.5x slower than the original fast values (was 2min) —
+// still far faster than prod, just enough slower to read posts as they land.
+export const CLAIM_INTERVAL_MS_TEST = 3 * 60_000  // every 3min in test mode
 
 // Peer response: after a bot reacts to a game event, each OTHER bot may respond
 export const PEER_DELAY_MS_PROD: [number, number] = [30 * 60_000, 90 * 60_000] // 30–90min
-export const PEER_DELAY_MS_TEST: [number, number] = [30_000, 90_000] // 30–90s in test mode
+export const PEER_DELAY_MS_TEST: [number, number] = [45_000, 135_000] // 45–135s in test mode (was 30–90s)
 export const PEER_SILENCE_CHANCE = 0.2 // sometimes an observer just doesn't respond
 
 // Theory posts (#theories): a step-back take after a chapter concludes
 export const THEORY_AFTER_CLOSE_CHANCE = 0.6
 export const THEORY_DELAY_MS_PROD: [number, number] = [2 * 3600_000, 6 * 3600_000] // 2–6h
-export const THEORY_DELAY_MS_TEST: [number, number] = [2 * 60_000, 4 * 60_000] // 2–4min
+export const THEORY_DELAY_MS_TEST: [number, number] = [3 * 60_000, 6 * 60_000] // 3–6min in test mode (was 2–4min)
 
 // Idle posts: unprompted musings when nothing has happened in the game.
 // Rolled once per scheduler tick (60s) while inside the character's posting
 // window — 1/500 per tick over a ~7h window ≈ 0.8 posts/day.
 export const IDLE_CHANCE_PER_TICK_PROD = 1 / 500
-export const IDLE_CHANCE_PER_TICK_TEST = 1 / 10
+export const IDLE_CHANCE_PER_TICK_TEST = 1 / 15 // was 1/10 — 1.5x slower expected cadence
 export const IDLE_MIN_GAP_MS_PROD = 4 * 3600_000 // no idle post within 4h of any other post
-// 30min gap caps idle chatter at ~2/hr/bot (~$2/day) even when test mode is
-// forgotten ON — event/chain/claim timings stay fast regardless.
-export const IDLE_MIN_GAP_MS_TEST = 30 * 60_000
+// 45min gap (was 30min) caps idle chatter at ~1.3/hr/bot even when test mode
+// is forgotten ON — event/chain/claim timings stay fast regardless.
+export const IDLE_MIN_GAP_MS_TEST = 45 * 60_000
 export const IDLE_TANGENT_CHANCE = 0.25 // story-adjacent personal tangent instead of analysis
 export const IDLE_THEORY_CHANCE = 0.2 // idle post goes to #theories as a bigger-picture take
 
