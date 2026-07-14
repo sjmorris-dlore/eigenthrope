@@ -79,6 +79,7 @@ export default function TopNav() {
                 <Link href="/leaderboard" className={navLink}>Leaderboard</Link>
                 <Link href="/bazaar" className={navLink}>Bazaar</Link>
                 <Link href="/wallet" className={navLink}>Artifacts</Link>
+                <Link href="/record" className={navLink}>The Record</Link>
                 {DISCORD_URL && (
                   <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className={navLink}>
                     Discord
@@ -119,6 +120,7 @@ export default function TopNav() {
             <Link href="/leaderboard" onClick={() => setMobileOpen(false)} className={navLink}>Leaderboard</Link>
             <Link href="/bazaar" onClick={() => setMobileOpen(false)} className={navLink}>Bazaar</Link>
             <Link href="/wallet" onClick={() => setMobileOpen(false)} className={navLink}>Artifacts</Link>
+            <Link href="/record" onClick={() => setMobileOpen(false)} className={navLink}>The Record</Link>
             {DISCORD_URL && (
               <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className={navLink}>
                 Discord
