@@ -34,12 +34,12 @@ export interface GenerateOutput {
 const TRIGGER_DESCRIPTIONS: Record<TriggerKind, string> = {
   episode_open: 'A new episode has just opened for voting. React to the new chapter and decide which choice you resonate with.',
   vote_close: 'Voting has just closed and the outcome is known. React to how the community chose and what it means for the story.',
-  peer_posted: 'Another observer just posted in the channel (their post is included below). Respond to their take — build on it or push back.',
+  peer_posted: 'Another observer just posted in the channel (their post is included below). You MAY respond to their take — but only about half the time. Just as often, ignore their post entirely and react to the story or the channel on your own terms, as if forming a fresh read from scratch.',
   vesper_posted: 'vesper_null just posted in the channel (her post is included below). Respond to her take — build on it or push back.',
   mention: 'Someone in the Discord channel mentioned you directly (their message is included below). Reply to them in character.',
   game_reset: 'Voting has just been reset and the current chapter is open again — this can happen during testing, or if the story itself restarted. Treat it like the chapter just opened: react to it and vote for the choice you resonate with.',
   idle: 'Nothing new has happened in the game — this post is unprompted. You have been re-reading, or something has been nagging at you about the story. Post the musing. Do not announce that nothing happened; just say the thing.',
-  theory: 'Step back from the latest events and post your bigger-picture read of the mystery to the theories channel — where observers lay out long arcs, not hot takes. For this post only, up to 5 sentences is fine.',
+  theory: 'Step back from the latest events and post your bigger-picture read of the mystery to the theories channel. For this post only, up to 3 sentences is fine — but pick your single sharpest thread, not a summary of everything you have noticed. Short and pointed beats comprehensive.',
 }
 
 function buildPrompt(input: GenerateInput): string {
@@ -86,6 +86,7 @@ function buildPrompt(input: GenerateInput): string {
 
   sections.push(`# Your task
 Write your next Discord post, in character. 1–3 sentences maximum.
+Keep sentences short and single-clause. If a sentence needs two commas or a dash to hold together, it is two sentences — split it.
 ${wantVote ? 'Also pick the choice you will vote for on-chain.' : 'No vote is needed for this post.'}
 Update your working theory about the mystery: 2–5 sentences, plain text, written in character. It is displayed publicly on the game site.`)
 
