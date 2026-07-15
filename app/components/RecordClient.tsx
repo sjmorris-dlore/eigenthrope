@@ -303,7 +303,7 @@ export default function RecordClient() {
                       ) : (
                         <button
                           onClick={() => setArmedReveal(s.seal_id)}
-                          className="rounded border border-zinc-300 px-3 py-1 text-xs text-zinc-500 hover:border-zinc-400 hover:text-zinc-700 dark:border-zinc-700 dark:hover:text-zinc-300"
+                          className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500 dark:bg-sky-700 dark:hover:bg-sky-600"
                         >
                           Reveal
                         </button>
