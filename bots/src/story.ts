@@ -46,6 +46,18 @@ export async function getTestMode(): Promise<boolean> {
   return (await getConfigValue('test_mode')) === true
 }
 
+/**
+ * Admin-adjustable pace multiplier for observer chatter (config key bot_pace).
+ * Applied on top of whichever mode is active: post delays ×pace, idle
+ * frequency ÷pace. 1 = normal, 2 = half as chatty, 0.5 = faster. Clamped
+ * so a typo can't silence the bots forever or melt the API budget.
+ */
+export async function getBotPace(): Promise<number> {
+  const v = await getConfigValue('bot_pace')
+  const n = typeof v === 'number' ? v : 1
+  return Math.min(10, Math.max(0.25, n))
+}
+
 export async function getActiveChoicePoint(): Promise<string | null> {
   return ((await getConfigValue('active_choice_point')) as string | undefined) ?? null
 }

@@ -2,7 +2,7 @@ import { CHARACTERS, inIdleWindow } from './characters.js'
 import { getCharacterState, claimPendingPost, allPendingPosts, schedulePendingPost, type CharacterState } from './state.js'
 import { executePost } from './poster.js'
 import { claimPendingArtifacts } from './artifacts.js'
-import { getTestMode, getBotClaimSignal } from './story.js'
+import { getTestMode, getBotClaimSignal, getBotPace } from './story.js'
 import {
   CLAIM_INTERVAL_MS_PROD, CLAIM_INTERVAL_MS_TEST, POLL_INTERVAL_MS,
   IDLE_CHANCE_PER_TICK_PROD, IDLE_CHANCE_PER_TICK_TEST,
@@ -49,14 +49,16 @@ async function maybeScheduleIdlePost(
   character: (typeof CHARACTERS)[number],
   state: CharacterState,
   testMode: boolean,
+  pace: number,
 ): Promise<void> {
   if (state.pending_posts?.idle || state.pending_posts?.theory) return
   if (!testMode && !inIdleWindow(character)) return
 
-  const chance = testMode ? IDLE_CHANCE_PER_TICK_TEST : IDLE_CHANCE_PER_TICK_PROD
+  // Admin pace lever: pace 2 = half the idle frequency, double the gap
+  const chance = (testMode ? IDLE_CHANCE_PER_TICK_TEST : IDLE_CHANCE_PER_TICK_PROD) / pace
   if (Math.random() >= chance) return
 
-  const minGap = testMode ? IDLE_MIN_GAP_MS_TEST : IDLE_MIN_GAP_MS_PROD
+  const minGap = (testMode ? IDLE_MIN_GAP_MS_TEST : IDLE_MIN_GAP_MS_PROD) * pace
   if (state.last_posted_at && Date.now() - new Date(state.last_posted_at).getTime() < minGap) return
 
   const asTheory = THEORIES_CHANNEL_ID() !== '' && Math.random() < IDLE_THEORY_CHANCE
@@ -80,14 +82,14 @@ async function maybeScheduleIdlePost(
  */
 async function tick(): Promise<void> {
   await maybeClaimArtifacts()
-  const testMode = await getTestMode()
+  const [testMode, pace] = await Promise.all([getTestMode(), getBotPace()])
 
   for (const character of CHARACTERS) {
     const { name } = character
     try {
       const state = await getCharacterState(name)
 
-      await maybeScheduleIdlePost(character, state, testMode)
+      await maybeScheduleIdlePost(character, state, testMode, pace)
 
       // Due posts execute oldest-first so e.g. the vote_close commentary
       // lands before the next episode_open reaction.

@@ -6,6 +6,7 @@ import type { LibraryChapter } from '@/app/api/admin/nft-library/route'
 import { BEHAVIORAL_TRAITS } from '@/lib/behavioral'
 import type { BehavioralWeights } from '@/lib/behavioral'
 import AdminRecordJudge from '@/app/components/AdminRecordJudge'
+import BotPaceControl from '@/app/components/BotPaceControl'
 
 interface Choice {
   label: string
@@ -1232,6 +1233,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-sm font-medium uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Admin</h1>
           <div className="flex items-center gap-4">
+            <BotPaceControl />
             <button
               onClick={toggleTestMode}
               disabled={testModeLoading}

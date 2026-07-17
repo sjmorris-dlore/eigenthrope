@@ -9,6 +9,21 @@ const INITIATOR_DELAY_MS_TEST: [number, number] = [60_000, 180_000] // 1–3min,
 
 type BotTrigger = 'episode_open' | 'vote_close' | 'game_reset'
 
+/** Admin pace lever (config key bot_pace): delays ×pace. Mirrors bots/src/story.ts getBotPace. */
+async function getBotPace(): Promise<number> {
+  try {
+    const result = await dynamo.send(new GetCommand({
+      TableName: 'eigenthrope_config',
+      Key: { key: 'bot_pace' },
+    }))
+    const v = result.Item?.value
+    const n = typeof v === 'number' ? v : 1
+    return Math.min(10, Math.max(0.25, n))
+  } catch {
+    return 1
+  }
+}
+
 /** Roster names, from the bot_addresses map the bot process publishes at startup. */
 async function getBotNames(): Promise<string[]> {
   try {
@@ -32,13 +47,13 @@ async function getBotNames(): Promise<string[]> {
  */
 export async function scheduleBotReaction(trigger: BotTrigger): Promise<void> {
   try {
-    const [testMode, names] = await Promise.all([getTestMode(), getBotNames()])
+    const [testMode, names, pace] = await Promise.all([getTestMode(), getBotNames(), getBotPace()])
     const initiator = names.length > 0
       ? names[Math.floor(Math.random() * names.length)]
       : 'vesper_null' // roster not published yet — fall back to a known bot
 
     const [min, max] = testMode ? INITIATOR_DELAY_MS_TEST : INITIATOR_DELAY_MS_PROD
-    const delay = min + Math.floor(Math.random() * (max - min))
+    const delay = (min + Math.floor(Math.random() * (max - min))) * pace
     const pending = {
       scheduled_for: new Date(Date.now() + delay).toISOString(),
       trigger,

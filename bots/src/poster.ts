@@ -2,7 +2,7 @@ import type { Message } from 'discord.js'
 import { CHARACTERS, CHARACTERS_BY_NAME, type CharacterName } from './characters.js'
 import { generatePost, summarisePosts } from './claude.js'
 import { getRecentMessages, sendPost } from './discordBots.js'
-import { getTestMode, loadGameContext } from './story.js'
+import { getTestMode, getBotPace, loadGameContext } from './story.js'
 import {
   getCharacterState, saveCharacterState, schedulePendingPost,
   postsToSummarise, HISTORY_SUMMARISE_BATCH,
@@ -112,14 +112,14 @@ export async function executePost(name: CharacterName, opts: ExecuteOptions): Pr
   // Chain: a game-event post invites responses from the other observers —
   // each independently, and sometimes one simply stays silent.
   if (CHAIN_TRIGGERS.has(opts.trigger)) {
-    const testMode = await getTestMode()
+    const [testMode, pace] = await Promise.all([getTestMode(), getBotPace()])
     for (const peer of CHARACTERS) {
       if (peer.name === name) continue
       if (Math.random() < PEER_SILENCE_CHANCE) {
         console.log(`[poster] ${peer.name} stays silent this time`)
         continue
       }
-      const delay = randomDelay(testMode ? PEER_DELAY_MS_TEST : PEER_DELAY_MS_PROD)
+      const delay = randomDelay(testMode ? PEER_DELAY_MS_TEST : PEER_DELAY_MS_PROD) * pace
       await schedulePendingPost(peer.name, {
         scheduled_for: new Date(Date.now() + delay).toISOString(),
         trigger: 'peer_posted',
@@ -134,7 +134,7 @@ export async function executePost(name: CharacterName, opts: ExecuteOptions): Pr
     // After a chapter concludes, the initiator sometimes steps back and posts
     // a bigger-picture take to #theories.
     if (opts.trigger === 'vote_close' && THEORIES_CHANNEL_ID() && Math.random() < THEORY_AFTER_CLOSE_CHANCE) {
-      const delay = randomDelay(testMode ? THEORY_DELAY_MS_TEST : THEORY_DELAY_MS_PROD)
+      const delay = randomDelay(testMode ? THEORY_DELAY_MS_TEST : THEORY_DELAY_MS_PROD) * pace
       await schedulePendingPost(name, {
         scheduled_for: new Date(Date.now() + delay).toISOString(),
         trigger: 'theory',
