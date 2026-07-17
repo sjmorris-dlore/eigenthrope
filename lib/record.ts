@@ -52,6 +52,8 @@ export interface SealRecord {
   revealed_at?: string
   judged_at?: string
   judgment_note?: string   // optional author note shown with the verdict
+  /** Set when the vindication trophy mint was requested (single-shot guard). */
+  trophy_requested_at?: string
 }
 
 export function newSalt(): string {

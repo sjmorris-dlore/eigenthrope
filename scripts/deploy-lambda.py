@@ -60,6 +60,14 @@ FUNCTIONS = {
         "memory":      256,
         "source":      os.path.join(LAMBDA_DIR, "create-offers", "index.mjs"),
     },
+    "mint-one": {
+        "name":        "eigenthrope-mint-one",
+        "handler":     "index.handler",
+        "description": "Mint a single NFT + claim offer to one wallet (vindication/golden drops)",
+        "timeout":     120,
+        "memory":      256,
+        "source":      os.path.join(LAMBDA_DIR, "mint-one", "index.mjs"),
+    },
 }
 
 
@@ -294,6 +302,8 @@ def main():
         to_deploy = ["mint-nfts"]
     elif "--offers-only" in args:
         to_deploy = ["create-offers"]
+    elif "--one-only" in args:
+        to_deploy = ["mint-one"]
     else:
         to_deploy = list(FUNCTIONS.keys())
 

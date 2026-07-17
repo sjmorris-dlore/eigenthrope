@@ -1,4 +1,4 @@
-import { GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { putImageFile, STORIES_BUCKET } from '@/lib/s3'
 
@@ -14,15 +14,17 @@ function extFromMime(mime: string) {
 export async function POST(request: Request) {
   const form = await request.formData()
   const file = form.get('file') as File | null
-  const choicePoint = form.get('choice_point') as string | null
   const type = form.get('type') as string | null
+  // Vindication artifacts are game-global (one design per iteration), not
+  // tied to a chapter — choice_point is only required for the episode types.
+  const choicePoint = (form.get('choice_point') as string | null) ?? (type === 'vindication' ? 'vindication' : null)
 
   if (!file || !choicePoint || !type) {
     return Response.json({ error: 'file, choice_point, and type are required' }, { status: 400 })
   }
 
-  if (type !== 'winner' && type !== 'participation') {
-    return Response.json({ error: 'type must be winner or participation' }, { status: 400 })
+  if (type !== 'winner' && type !== 'participation' && type !== 'vindication') {
+    return Response.json({ error: 'type must be winner, participation, or vindication' }, { status: 400 })
   }
 
   const jwt = process.env.PINATA_JWT
@@ -59,20 +61,28 @@ export async function POST(request: Request) {
   const { IpfsHash: imageCid } = await pinataRes.json() as { IpfsHash: string }
   const imageUri = `ipfs://${imageCid}`
 
-  // Fetch chapter label so the NFT metadata has a human-readable name
-  const chapterItem = await dynamo.send(new GetCommand({
-    TableName: 'eigenthrope_chapters',
-    Key: { choice_point: choicePoint },
-  }))
-  const chapterLabel = (chapterItem.Item as Record<string, unknown>)?.chapter_label as string | undefined ?? choicePoint
-  const artifactLabel = type === 'winner' ? 'Winner' : 'Participation'
-
-  const metadata = {
-    name: `Eigenthrope ${artifactLabel} Artifact — ${chapterLabel}`,
-    description: type === 'winner'
-      ? `Awarded to an Eigenthrope observer who voted for the winning choice in ${chapterLabel}.`
-      : `Awarded to an Eigenthrope observer who voted in ${chapterLabel}.`,
-    image: imageUri,
+  let metadata: { name: string; description: string; image: string }
+  if (type === 'vindication') {
+    metadata = {
+      name: 'Eigenthrope Vindication Artifact',
+      description: 'Awarded to an Eigenthrope observer whose sealed observation was vindicated by the story — the ledger proved they saw it first.',
+      image: imageUri,
+    }
+  } else {
+    // Fetch chapter label so the NFT metadata has a human-readable name
+    const chapterItem = await dynamo.send(new GetCommand({
+      TableName: 'eigenthrope_chapters',
+      Key: { choice_point: choicePoint },
+    }))
+    const chapterLabel = (chapterItem.Item as Record<string, unknown>)?.chapter_label as string | undefined ?? choicePoint
+    const artifactLabel = type === 'winner' ? 'Winner' : 'Participation'
+    metadata = {
+      name: `Eigenthrope ${artifactLabel} Artifact — ${chapterLabel}`,
+      description: type === 'winner'
+        ? `Awarded to an Eigenthrope observer who voted for the winning choice in ${chapterLabel}.`
+        : `Awarded to an Eigenthrope observer who voted in ${chapterLabel}.`,
+      image: imageUri,
+    }
   }
 
   const metadataRes = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
@@ -95,15 +105,27 @@ export async function POST(request: Request) {
   const { IpfsHash: metadataCid } = await metadataRes.json() as { IpfsHash: string }
   const metadataUri = `ipfs://${metadataCid}`
 
-  const nftField = type === 'winner' ? 'winner_nft_uri' : 'participation_nft_uri'
-  const imgField = type === 'winner' ? 'winner_image_key' : 'participation_image_key'
+  if (type === 'vindication') {
+    // Game-global config, not a chapter field
+    await dynamo.send(new PutCommand({
+      TableName: 'eigenthrope_config',
+      Item: {
+        key: 'vindication_nft_uri',
+        value: { uri: metadataUri, image_key: s3Key },
+        updated_at: new Date().toISOString(),
+      },
+    }))
+  } else {
+    const nftField = type === 'winner' ? 'winner_nft_uri' : 'participation_nft_uri'
+    const imgField = type === 'winner' ? 'winner_image_key' : 'participation_image_key'
 
-  await dynamo.send(new UpdateCommand({
-    TableName: 'eigenthrope_chapters',
-    Key: { choice_point: choicePoint },
-    UpdateExpression: `SET ${nftField} = :uri, ${imgField} = :key`,
-    ExpressionAttributeValues: { ':uri': metadataUri, ':key': s3Key },
-  }))
+    await dynamo.send(new UpdateCommand({
+      TableName: 'eigenthrope_chapters',
+      Key: { choice_point: choicePoint },
+      UpdateExpression: `SET ${nftField} = :uri, ${imgField} = :key`,
+      ExpressionAttributeValues: { ':uri': metadataUri, ':key': s3Key },
+    }))
+  }
 
   return Response.json({ uri: metadataUri, imageCid, metadataCid, s3_key: s3Key })
 }

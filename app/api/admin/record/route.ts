@@ -1,4 +1,4 @@
-import { ScanCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
+import { ScanCommand, GetCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { SEALS_TABLE, type SealRecord } from '@/lib/record'
 
@@ -9,7 +9,10 @@ import { SEALS_TABLE, type SealRecord } from '@/lib/record'
  * including still-sealed text, which only the author may see early.
  */
 export async function GET() {
-  const result = await dynamo.send(new ScanCommand({ TableName: SEALS_TABLE }))
+  const [result, uriItem] = await Promise.all([
+    dynamo.send(new ScanCommand({ TableName: SEALS_TABLE })),
+    dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'vindication_nft_uri' } })),
+  ])
   const seals = ((result.Items ?? []) as SealRecord[])
     .filter(s => s.status !== 'pending_signature')
     .sort((a, b) => {
@@ -19,7 +22,8 @@ export async function GET() {
       if (aOpen !== bOpen) return aOpen - bOpen
       return (b.sealed_at ?? b.created_at).localeCompare(a.sealed_at ?? a.created_at)
     })
-  return Response.json({ seals })
+  const vindication = (uriItem.Item?.value ?? null) as { uri: string; image_key?: string } | null
+  return Response.json({ seals, vindication })
 }
 
 /** Judge a revealed seal: vindicated, denied, or back to open (revealed). */

@@ -14,6 +14,12 @@ interface AdminSeal {
   revealed_at?: string
   judged_at?: string
   judgment_note?: string
+  trophy_requested_at?: string
+}
+
+interface VindicationArt {
+  uri: string
+  image_key?: string
 }
 
 function shortAddress(addr: string) {
@@ -34,12 +40,19 @@ export default function AdminRecordJudge() {
   const [busy, setBusy] = useState<string | null>(null)
   const [peeked, setPeeked] = useState<Set<string>>(new Set())
   const [armedDelete, setArmedDelete] = useState<string | null>(null)
+  const [vindication, setVindication] = useState<VindicationArt | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState('')
+  const [mintStatus, setMintStatus] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/record')
       const data = await res.json()
-      if (res.ok) setSeals(data.seals ?? [])
+      if (res.ok) {
+        setSeals(data.seals ?? [])
+        setVindication(data.vindication ?? null)
+      }
     } catch { /* transient */ }
     setLoading(false)
   }, [])
@@ -56,6 +69,39 @@ export default function AdminRecordJudge() {
       })
       await load()
     } catch { /* transient */ }
+    setBusy(null)
+  }
+
+  async function uploadArt(file: File) {
+    setUploading(true)
+    setUploadStatus('')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('type', 'vindication')
+      const res = await fetch('/api/admin/upload-nft-image', { method: 'POST', body: form })
+      const data = await res.json()
+      if (res.ok) { setUploadStatus('Pinned.'); await load() }
+      else setUploadStatus(`Error: ${data.error}`)
+    } catch { setUploadStatus('Error: upload failed.') }
+    setUploading(false)
+  }
+
+  async function mintTrophy(sealId: string) {
+    setBusy(sealId)
+    setMintStatus(prev => ({ ...prev, [sealId]: '' }))
+    try {
+      const res = await fetch('/api/admin/record-mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seal_id: sealId }),
+      })
+      const data = await res.json()
+      setMintStatus(prev => ({ ...prev, [sealId]: res.ok ? 'Mint started — offer lands shortly.' : `Error: ${data.error}` }))
+      if (res.ok) await load()
+    } catch {
+      setMintStatus(prev => ({ ...prev, [sealId]: 'Error: request failed.' }))
+    }
     setBusy(null)
   }
 
@@ -101,10 +147,51 @@ export default function AdminRecordJudge() {
   const rest = seals.filter(s => s.status !== 'revealed')
 
   if (loading) return <p className="text-xs text-zinc-400">Loading the Record…</p>
-  if (seals.length === 0) return <p className="text-xs text-zinc-400">Nothing sealed yet.</p>
+
+  const artSlot = (
+    <div className="flex items-center gap-4 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+      {vindication?.image_key ? (
+        <div className="h-16 w-9 shrink-0 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/api/nft-image?key=${encodeURIComponent(vindication.image_key)}`} alt="Vindication Artifact" className="h-full w-full object-cover" />
+        </div>
+      ) : (
+        <div className="flex h-16 w-9 shrink-0 items-center justify-center rounded bg-zinc-100 text-lg dark:bg-zinc-800">?</div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Vindication Artifact</p>
+        <p className="mt-0.5 text-[11px] text-zinc-400">
+          {vindication?.uri
+            ? 'Artwork pinned — trophies can mint.'
+            : 'No artwork yet — upload an image before minting trophies.'}
+        </p>
+        <label className="mt-1 inline-block cursor-pointer text-[11px] underline underline-offset-2 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">
+          {uploading ? 'Uploading…' : vindication?.uri ? 'Replace image' : 'Upload image'}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={uploading}
+            onChange={e => { const f = e.target.files?.[0]; if (f) void uploadArt(f); e.target.value = '' }}
+          />
+        </label>
+        {uploadStatus && <span className="ml-2 text-[11px] text-zinc-400">{uploadStatus}</span>}
+      </div>
+    </div>
+  )
+
+  if (seals.length === 0) {
+    return (
+      <div className="space-y-4">
+        {artSlot}
+        <p className="text-xs text-zinc-400">Nothing sealed yet.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
+      {artSlot}
       {open.length === 0 ? (
         <p className="text-xs text-zinc-400">No reveals awaiting judgment.</p>
       ) : (
@@ -177,7 +264,23 @@ export default function AdminRecordJudge() {
                   <>
                     <p className="mt-1 text-zinc-500 dark:text-zinc-400">“{s.text}”</p>
                     {s.judgment_note && <p className="mt-1 italic">— {s.judgment_note}</p>}
-                    <div className="mt-1 flex items-center gap-3">
+                    <div className="mt-1 flex flex-wrap items-center gap-3">
+                      {s.status === 'vindicated' && (
+                        s.trophy_requested_at ? (
+                          <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                            Trophy minted {s.trophy_requested_at.slice(0, 10)}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => mintTrophy(s.seal_id)}
+                            disabled={busy === s.seal_id || !vindication?.uri}
+                            title={vindication?.uri ? undefined : 'Upload the Vindication Artifact artwork first'}
+                            className="rounded bg-amber-500 px-2.5 py-0.5 text-[11px] font-medium text-white hover:bg-amber-400 disabled:opacity-40"
+                          >
+                            {busy === s.seal_id ? 'Minting…' : 'Mint Trophy'}
+                          </button>
+                        )
+                      )}
                       <button
                         onClick={() => judge(s.seal_id, 'revealed')}
                         disabled={busy === s.seal_id}
@@ -187,6 +290,9 @@ export default function AdminRecordJudge() {
                       </button>
                       <DeleteButton sealId={s.seal_id} />
                     </div>
+                    {mintStatus[s.seal_id] && (
+                      <p className="mt-1 text-[11px] text-zinc-400">{mintStatus[s.seal_id]}</p>
+                    )}
                   </>
                 )}
               </div>
