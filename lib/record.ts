@@ -9,8 +9,12 @@
  * hash. On reveal the salt and text go public so anyone can verify
  * sha256(salt + "\n" + text) against the chain.
  *
- * The Record is PERMANENT: it survives episodes, universes, and game resets.
- * Seal records carry no reset_version on purpose.
+ * Scope: the Record persists across episodes and universes WITHIN a game
+ * iteration — but a total game reset restarts the story itself, so the reset
+ * flow deletes all seals (see /api/admin/reset-game). Seals are stamped with
+ * the reset_version they were sealed under. Any future vindication artifact
+ * mint must be iteration-scoped the same way (taxon 3000+rv alongside
+ * winner 1000+rv / participation 2000+rv).
  *
  * Lifecycle: pending_signature → sealed → revealed → vindicated | denied
  * (a revealed-but-unjudged seal is "open" — the author judges reveals only,
@@ -40,6 +44,8 @@ export interface SealRecord {
   salt: string             // NEVER exposed publicly until revealed
   hash: string             // sha256(salt + "\n" + text), hex — public from the start
   context: string          // where the game stood at sealing, e.g. "U002 · Episode 1 · Ashfang Mountain"
+  /** Game iteration this seal belongs to (absent on pre-stamping seals). */
+  reset_version?: number
   created_at: string
   sealed_at?: string
   tx_hash?: string         // the on-ledger anchor

@@ -1,4 +1,4 @@
-import { ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { ScanCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
 import { SEALS_TABLE, type SealRecord } from '@/lib/record'
 
@@ -60,4 +60,21 @@ export async function POST(request: Request) {
   }
 
   return Response.json({ ok: true, seal_id, status: verdict })
+}
+
+/**
+ * Admin spot-delete — for cleaning test seals without a full game reset.
+ * (A game reset deletes ALL seals automatically; this is the scalpel.)
+ * The on-ledger transaction obviously persists; only the game's record
+ * of it is removed.
+ */
+export async function DELETE(request: Request) {
+  const { seal_id } = await request.json().catch(() => ({})) as { seal_id?: string }
+  if (!seal_id) return Response.json({ error: 'seal_id required' }, { status: 400 })
+
+  await dynamo.send(new DeleteCommand({
+    TableName: SEALS_TABLE,
+    Key: { seal_id },
+  }))
+  return Response.json({ ok: true, seal_id, deleted: true })
 }

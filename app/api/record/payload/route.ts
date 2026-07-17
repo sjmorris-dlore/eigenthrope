@@ -1,5 +1,6 @@
 import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import { getResetVersion } from '@/lib/config'
 import {
   SEALS_TABLE, SEAL_CAP, SEAL_TEXT_MIN, SEAL_TEXT_MAX, PENDING_TTL_MS,
   ACCOUNT_RE, newSalt, sealHash, type SealRecord,
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Could not create the signing request' }, { status: 502 })
   }
 
-  const context = await currentContext()
+  const [context, resetVersion] = await Promise.all([currentContext(), getResetVersion()])
   const record: SealRecord = {
     seal_id: data.uuid,
     account: trimmedAccount,
@@ -131,6 +132,7 @@ export async function POST(request: Request) {
     salt,
     hash,
     context,
+    reset_version: resetVersion,
     created_at: new Date().toISOString(),
   }
   await dynamo.send(new PutCommand({ TableName: SEALS_TABLE, Item: record }))

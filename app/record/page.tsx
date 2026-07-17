@@ -21,7 +21,8 @@ export default function RecordPage() {
             ledger — timestamped, unreadable, permanent. Nobody sees what you
             observed. Everyone sees that you observed <em>something</em>, and when.
             When the story proves you right, reveal it: the ledger will testify
-            you saw it first. The Record survives episodes, universes, and resets.
+            you saw it first. The Record holds across every episode and universe
+            of the story — sealed until you speak, remembered until the end.
           </p>
         </div>
         <RecordClient />

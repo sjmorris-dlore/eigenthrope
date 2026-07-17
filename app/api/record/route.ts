@@ -1,5 +1,6 @@
 import { ScanCommand, GetCommand, UpdateCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import { getResetVersion } from '@/lib/config'
 import {
   SEALS_TABLE, publicSeal, verifyXamanAccount, type SealRecord, type PublicSeal,
 } from '@/lib/record'
@@ -10,16 +11,22 @@ import {
  * additionally see your own still-sealed text.
  */
 export async function GET(request: Request) {
-  const viewer = await verifyXamanAccount(request.headers.get('authorization'))
+  const [viewer, result, rv] = await Promise.all([
+    verifyXamanAccount(request.headers.get('authorization')),
+    dynamo.send(new ScanCommand({
+      TableName: SEALS_TABLE,
+      FilterExpression: '#s <> :pending',
+      ExpressionAttributeNames: { '#s': 'status' },
+      ExpressionAttributeValues: { ':pending': 'pending_signature' },
+    })),
+    getResetVersion(),
+  ])
 
-  const result = await dynamo.send(new ScanCommand({
-    TableName: SEALS_TABLE,
-    FilterExpression: '#s <> :pending',
-    ExpressionAttributeNames: { '#s': 'status' },
-    ExpressionAttributeValues: { ':pending': 'pending_signature' },
-  }))
-
+  // Current iteration only — reset deletes seals anyway, but this guards
+  // against a partially failed reset leaving orphans on the public board.
+  // Seals from before rv stamping (reset_version absent) are treated as current.
   const seals = ((result.Items ?? []) as SealRecord[])
+    .filter(s => s.reset_version === undefined || s.reset_version === rv)
     .sort((a, b) => (b.sealed_at ?? b.created_at).localeCompare(a.sealed_at ?? a.created_at))
 
   // Resolve display aliases for the accounts on the board (public info)

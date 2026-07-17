@@ -33,6 +33,7 @@ export default function AdminRecordJudge() {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [peeked, setPeeked] = useState<Set<string>>(new Set())
+  const [armedDelete, setArmedDelete] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -56,6 +57,44 @@ export default function AdminRecordJudge() {
       await load()
     } catch { /* transient */ }
     setBusy(null)
+  }
+
+  async function remove(sealId: string) {
+    setBusy(sealId)
+    try {
+      await fetch('/api/admin/record', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seal_id: sealId }),
+      })
+      await load()
+    } catch { /* transient */ }
+    setArmedDelete(null)
+    setBusy(null)
+  }
+
+  function DeleteButton({ sealId }: { sealId: string }) {
+    return armedDelete === sealId ? (
+      <span className="inline-flex items-center gap-2">
+        <button
+          onClick={() => remove(sealId)}
+          disabled={busy === sealId}
+          className="text-[11px] font-medium text-red-600 underline underline-offset-2 hover:text-red-500 disabled:opacity-40"
+        >
+          Confirm delete
+        </button>
+        <button onClick={() => setArmedDelete(null)} className="text-[11px] text-zinc-400 hover:text-zinc-600">
+          keep
+        </button>
+      </span>
+    ) : (
+      <button
+        onClick={() => setArmedDelete(sealId)}
+        className="text-[11px] text-zinc-400 underline underline-offset-2 hover:text-red-500"
+      >
+        Delete (test data)
+      </button>
+    )
   }
 
   const open = seals.filter(s => s.status === 'revealed')
@@ -99,7 +138,10 @@ export default function AdminRecordJudge() {
               >
                 Deny
               </button>
-              <span className="ml-auto text-[10px] text-zinc-400 self-center">or leave open — the story may not have spoken yet</span>
+              <span className="ml-auto self-center inline-flex items-center gap-3">
+                <span className="text-[10px] text-zinc-400">or leave open — the story may not have spoken yet</span>
+                <DeleteButton sealId={s.seal_id} />
+              </span>
             </div>
           </div>
         ))
@@ -118,27 +160,33 @@ export default function AdminRecordJudge() {
                   {' · '}{shortAddress(s.account)} · sealed {s.sealed_at?.slice(0, 10)} · {s.context}
                 </p>
                 {s.status === 'sealed' ? (
-                  peeked.has(s.seal_id) ? (
-                    <p className="mt-1 text-zinc-500 dark:text-zinc-400">“{s.text}”</p>
-                  ) : (
-                    <button
-                      onClick={() => setPeeked(prev => new Set(prev).add(s.seal_id))}
-                      className="mt-1 text-[11px] underline underline-offset-2 hover:text-zinc-600 dark:hover:text-zinc-300"
-                    >
-                      Peek at sealed text (author&apos;s eyes only)
-                    </button>
-                  )
+                  <>
+                    {peeked.has(s.seal_id) ? (
+                      <p className="mt-1 text-zinc-500 dark:text-zinc-400">“{s.text}”</p>
+                    ) : (
+                      <button
+                        onClick={() => setPeeked(prev => new Set(prev).add(s.seal_id))}
+                        className="mt-1 text-[11px] underline underline-offset-2 hover:text-zinc-600 dark:hover:text-zinc-300"
+                      >
+                        Peek at sealed text (author&apos;s eyes only)
+                      </button>
+                    )}
+                    <div className="mt-1"><DeleteButton sealId={s.seal_id} /></div>
+                  </>
                 ) : (
                   <>
                     <p className="mt-1 text-zinc-500 dark:text-zinc-400">“{s.text}”</p>
                     {s.judgment_note && <p className="mt-1 italic">— {s.judgment_note}</p>}
-                    <button
-                      onClick={() => judge(s.seal_id, 'revealed')}
-                      disabled={busy === s.seal_id}
-                      className="mt-1 text-[11px] underline underline-offset-2 hover:text-zinc-600 dark:hover:text-zinc-300"
-                    >
-                      Reopen (clear verdict)
-                    </button>
+                    <div className="mt-1 flex items-center gap-3">
+                      <button
+                        onClick={() => judge(s.seal_id, 'revealed')}
+                        disabled={busy === s.seal_id}
+                        className="text-[11px] underline underline-offset-2 hover:text-zinc-600 dark:hover:text-zinc-300"
+                      >
+                        Reopen (clear verdict)
+                      </button>
+                      <DeleteButton sealId={s.seal_id} />
+                    </div>
                   </>
                 )}
               </div>

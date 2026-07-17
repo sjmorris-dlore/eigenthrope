@@ -8,7 +8,7 @@ export async function POST() {
   const currentRv = await getResetVersion()
   const newRv = currentRv + 1
 
-  const [tallies, chapters, universes, minting, artifacts] = await Promise.all([
+  const [tallies, chapters, universes, minting, artifacts, seals] = await Promise.all([
     dynamo.send(new ScanCommand({
       TableName: 'eigenthrope_tallies',
       ProjectionExpression: 'choice_point',
@@ -28,6 +28,10 @@ export async function POST() {
     dynamo.send(new ScanCommand({
       TableName: 'eigenthrope_artifacts',
       ProjectionExpression: 'offer_id',
+    })),
+    dynamo.send(new ScanCommand({
+      TableName: 'eigenthrope_seals',
+      ProjectionExpression: 'seal_id',
     })),
   ])
 
@@ -63,6 +67,16 @@ export async function POST() {
       dynamo.send(new DeleteCommand({
         TableName: 'eigenthrope_artifacts',
         Key: { offer_id: item.offer_id },
+      }))
+    ),
+
+    // Delete all sealed observations — the Record persists across universes
+    // and episodes WITHIN an iteration, but a total game reset restarts the
+    // story itself; theories about the previous playthrough don't carry over.
+    ...(seals.Items ?? []).map(item =>
+      dynamo.send(new DeleteCommand({
+        TableName: 'eigenthrope_seals',
+        Key: { seal_id: item.seal_id },
       }))
     ),
 
