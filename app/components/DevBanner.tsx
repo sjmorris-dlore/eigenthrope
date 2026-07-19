@@ -18,7 +18,11 @@ export default function DevBanner() {
     // Height is always reserved (TopNav/mobile menu are positioned assuming
     // this bar exists) — only the content and color toggle with test mode,
     // so there's no layout shift when it turns on or off.
-    <div className={`fixed inset-x-0 top-0 z-[60] h-8 overflow-hidden ${testMode ? 'bg-amber-400 dark:bg-amber-700' : ''}`}>
+    // pointer-events-none: it's a purely informational strip, and an invisible
+    // tap-eating overlay above the nav caused phantom "first tap does nothing"
+    // on mobile. Opaque page-colored background when inactive, so scrolled
+    // content disappears behind it instead of showing through the gap.
+    <div className={`pointer-events-none fixed inset-x-0 top-0 z-[60] h-8 overflow-hidden ${testMode ? 'bg-amber-400 dark:bg-amber-700' : 'bg-zinc-50 dark:bg-black'}`}>
       {testMode && (
         <div
           className="flex h-full w-max items-center whitespace-nowrap"

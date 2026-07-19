@@ -102,7 +102,7 @@ export default function TopNav() {
           <ThemeToggle />
           {!isAdmin && (
             <button
-              className="flex items-center justify-center text-lg text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 sm:hidden"
+              className="-m-2 flex items-center justify-center p-2 text-lg text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 sm:hidden"
               onClick={() => setMobileOpen(o => !o)}
               aria-label="Toggle menu"
             >
