@@ -46,3 +46,13 @@ body {
   80%  { opacity: 1; }
   100% { transform: translateY(-55vh); opacity: 0; }
 }
+
+/* iOS Safari zooms the whole page when focusing an input whose font-size is
+   under 16px — and once the visual viewport is zoomed, position:fixed
+   elements drift on scroll and dropdowns open off-screen. Keeping form
+   controls at 16px on small screens prevents the zoom from ever happening. */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}

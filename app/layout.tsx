@@ -62,7 +62,7 @@ export default function RootLayout({
           })();
         `}} />
       </head>
-      <body className="flex min-h-full flex-col pt-20">
+      <body className="flex min-h-full flex-col overflow-x-clip pt-20">
         <EpisodeProvider>
           <DevBanner />
           <TopNav />

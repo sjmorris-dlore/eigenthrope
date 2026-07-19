@@ -110,28 +110,32 @@ export default function TopNav() {
             </button>
           )}
         </div>
-      </nav>
 
-      {!isAdmin && mobileOpen && (
-        <div className="fixed inset-x-0 top-20 z-40 max-h-[calc(100vh-5rem)] overflow-y-auto border-b border-zinc-200 bg-zinc-50 sm:hidden dark:border-zinc-800 dark:bg-black">
-          <div className="flex flex-col gap-3 p-4">
-            <Link href="/archive" onClick={() => setMobileOpen(false)} className={navLink}>Archive</Link>
-            {/* Observers hidden for now — page still exists at /observers */}
-            <Link href="/leaderboard" onClick={() => setMobileOpen(false)} className={navLink}>Leaderboard</Link>
-            <Link href="/bazaar" onClick={() => setMobileOpen(false)} className={navLink}>Bazaar</Link>
-            <Link href="/wallet" onClick={() => setMobileOpen(false)} className={navLink}>Artifacts</Link>
-            <Link href="/record" onClick={() => setMobileOpen(false)} className={navLink}>The Record</Link>
-            {DISCORD_URL && (
-              <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className={navLink}>
-                Discord
-              </a>
-            )}
-            <AuthorLink />
-            <GameplayMenu inline />
-            <RabbitHoleMenu inline />
+        {/* Mobile dropdown lives INSIDE the fixed nav and hangs off its bottom
+            edge (absolute top-full) — so however the mobile browser treats the
+            fixed nav under zoom or viewport shifts, the menu opens attached to
+            it, never at some off-screen document position. */}
+        {!isAdmin && mobileOpen && (
+          <div className="absolute inset-x-0 top-full z-40 max-h-[calc(100vh-5rem)] overflow-y-auto border-b border-zinc-200 bg-zinc-50 sm:hidden dark:border-zinc-800 dark:bg-black">
+            <div className="flex flex-col gap-3 p-4">
+              <Link href="/archive" onClick={() => setMobileOpen(false)} className={navLink}>Archive</Link>
+              {/* Observers hidden for now — page still exists at /observers */}
+              <Link href="/leaderboard" onClick={() => setMobileOpen(false)} className={navLink}>Leaderboard</Link>
+              <Link href="/bazaar" onClick={() => setMobileOpen(false)} className={navLink}>Bazaar</Link>
+              <Link href="/wallet" onClick={() => setMobileOpen(false)} className={navLink}>Artifacts</Link>
+              <Link href="/record" onClick={() => setMobileOpen(false)} className={navLink}>The Record</Link>
+              {DISCORD_URL && (
+                <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className={navLink}>
+                  Discord
+                </a>
+              )}
+              <AuthorLink />
+              <GameplayMenu inline />
+              <RabbitHoleMenu inline />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </nav>
     </>
   )
 }
