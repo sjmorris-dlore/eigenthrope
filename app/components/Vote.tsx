@@ -138,17 +138,24 @@ function PagedStory({
 
 function ConclusionCard({
   predecessor,
+  nextLabel,
   onAdvance,
 }: {
   predecessor: NonNullable<ChapterData['predecessor']>
+  nextLabel: string
   onAdvance: () => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
+  // chapter_label follows "Episode N · Title" — episodeLabel() supplies the
+  // universe+episode, so keep just the title part when it's extractable.
+  const titlePart = predecessor.chapter_label.includes('·')
+    ? predecessor.chapter_label.split('·').slice(1).join('·').trim()
+    : predecessor.chapter_label
   return (
     <div className="w-full rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-center justify-between px-8 pt-6 sm:px-12">
         <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
-          {predecessor.chapter_label} — Conclusion
+          {episodeLabel(predecessor.choice_point)} · {titlePart} — Conclusion
         </span>
         <button
           onClick={() => setCollapsed(c => !c)}
@@ -169,9 +176,9 @@ function ConclusionCard({
           )}
           <button
             onClick={onAdvance}
-            className="mt-8 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+            className="mt-8 w-full rounded-lg bg-zinc-900 px-6 py-3 text-xs font-bold uppercase tracking-[0.2em] text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
-            Next Chapter →
+            Continue to {nextLabel} →
           </button>
         </div>
       )}
@@ -448,6 +455,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
       {conclusionVisible && chapter.predecessor ? (
         <ConclusionCard
           predecessor={chapter.predecessor}
+          nextLabel={episodeLabel(chapter.choice_point)}
           onAdvance={() => {
             localStorage.setItem(`dismissed_conclusion_${chapter.predecessor!.choice_point}`, 'true')
             setConclusionVisible(false)
