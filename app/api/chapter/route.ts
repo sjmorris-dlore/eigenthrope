@@ -1,5 +1,6 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb'
 import { dynamo } from '@/lib/dynamo'
+import { getResetVersion } from '@/lib/config'
 import { fetchStoryText } from '@/lib/s3'
 import { publicChoices } from '@/lib/behavioral'
 import type { BehavioralWeights, BehavioralProfile } from '@/lib/behavioral'
@@ -39,6 +40,9 @@ export interface ChapterData {
   winner_image_key?: string
   author_link_url?: string
   author_link_label?: string
+  /** Current game iteration — clients scope their localStorage flags by this
+   *  so per-device state (voted, conclusion-dismissed) retires on reset. */
+  reset_version?: number
   // Populated server-side from S3, not stored in DB
   story_text?: string
   choice_intro_text?: string
@@ -87,7 +91,8 @@ export async function GET() {
     ? prevChapter.choice_outcomes?.[prevChapter.winning_choice]
     : undefined
 
-  const [profileItem, storyText, choiceIntroText, outcomeText, epilogueText, prevOutcomeText, prevEpilogueText] = await Promise.all([
+  const [resetVersion, profileItem, storyText, choiceIntroText, outcomeText, epilogueText, prevOutcomeText, prevEpilogueText] = await Promise.all([
+    getResetVersion(),
     dynamo.send(new GetCommand({ TableName: 'eigenthrope_config', Key: { key: 'behavioral_profile' } })),
     chapter.story_key ? fetchStoryText(chapter.story_key) : Promise.resolve(null),
     chapter.choice_intro_key ? fetchStoryText(chapter.choice_intro_key) : Promise.resolve(null),
@@ -115,6 +120,7 @@ export async function GET() {
 
   return Response.json({
     ...chapter,
+    reset_version: resetVersion,
     // Public payload: choice labels/descriptions only — behavioral weights
     // are hidden scoring; final_weights and behavioral internals stay server-side.
     choices: publicChoices(chapter.choices),

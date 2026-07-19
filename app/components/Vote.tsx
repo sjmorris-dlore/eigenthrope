@@ -248,10 +248,13 @@ export default function Vote({ account, onVoted }: VoteProps) {
     setVotingReady(pages.length <= 1)
   }, [chapter])
 
-  // Show conclusion card if the player voted in the predecessor chapter and hasn't dismissed it
+  // Show conclusion card if the player voted in the predecessor chapter and
+  // hasn't dismissed it. Keys are scoped by reset_version — a game reset
+  // reopens the same choice points, and stale flags from a previous
+  // iteration's votes must not resurrect old conclusion cards.
   useEffect(() => {
     if (!chapter?.predecessor) return
-    const prevKey = chapter.predecessor.choice_point
+    const prevKey = `${chapter.predecessor.choice_point}_rv${chapter.reset_version ?? 0}`
     const votedPrev = localStorage.getItem(`voted_${prevKey}`)
     const dismissed = localStorage.getItem(`dismissed_conclusion_${prevKey}`)
     if (votedPrev === 'true' && dismissed !== 'true') {
@@ -318,7 +321,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
 
       if (s.signed) {
         clearInterval(intervalRef.current!)
-        localStorage.setItem(`voted_${chapter.choice_point}`, 'true')
+        localStorage.setItem(`voted_${chapter.choice_point}_rv${chapter.reset_version ?? 0}`, 'true')
         setVoted(choice)
         setChangingVote(false)
         setPending(null)
@@ -457,7 +460,7 @@ export default function Vote({ account, onVoted }: VoteProps) {
           predecessor={chapter.predecessor}
           nextLabel={episodeLabel(chapter.choice_point)}
           onAdvance={() => {
-            localStorage.setItem(`dismissed_conclusion_${chapter.predecessor!.choice_point}`, 'true')
+            localStorage.setItem(`dismissed_conclusion_${chapter.predecessor!.choice_point}_rv${chapter.reset_version ?? 0}`, 'true')
             setConclusionVisible(false)
           }}
         />
