@@ -13,7 +13,7 @@ jobs:
           STATUS=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
             --max-time 30 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            https://eigenstate.sjmorriswrites.com/api/cron/close-choice-point \
+            https://eigenthrope.sjmorriswrites.com/api/cron/close-choice-point \
             || echo "curl_failed")
           echo "HTTP status: $STATUS"
           echo "Response body:"
