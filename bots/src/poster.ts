@@ -111,13 +111,34 @@ export async function executePost(name: CharacterName, opts: ExecuteOptions): Pr
 
   // Chain: a game-event post invites responses from the other observers —
   // each independently, and sometimes one simply stays silent.
+  //
+  // Silence is a Discord-flavor choice ONLY. A peer is never silenced out of
+  // their one shot at voting on the currently open choice point — two
+  // independent chain events (e.g. vote_close + episode_open firing close
+  // together) each roll silence separately, and pure bad luck can otherwise
+  // leave a bot with nothing scheduled for an episode at all, forever. So:
+  // if skipping this peer would cost them an unvoted, currently-open choice
+  // point, the roll is bypassed and they're scheduled unconditionally.
+  // Once they've voted, silence is free to happen again for pure flavor.
   if (CHAIN_TRIGGERS.has(opts.trigger)) {
     const [testMode, pace] = await Promise.all([getTestMode(), getBotPace()])
+    const activeVoteTag = game && game.record.status === 'open' ? voteTag : null
+
     for (const peer of CHARACTERS) {
       if (peer.name === name) continue
-      if (Math.random() < PEER_SILENCE_CHANCE) {
+
+      let mustVote = false
+      if (activeVoteTag) {
+        const peerState = await getCharacterState(peer.name)
+        mustVote = peerState.last_voted !== activeVoteTag
+      }
+
+      if (!mustVote && Math.random() < PEER_SILENCE_CHANCE) {
         console.log(`[poster] ${peer.name} stays silent this time`)
         continue
+      }
+      if (mustVote) {
+        console.log(`[poster] ${peer.name} guaranteed a reaction — hasn't voted on ${activeVoteTag} yet`)
       }
       const delay = randomDelay(testMode ? PEER_DELAY_MS_TEST : PEER_DELAY_MS_PROD) * pace
       await schedulePendingPost(peer.name, {

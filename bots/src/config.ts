@@ -57,7 +57,15 @@ export const CLAIM_INTERVAL_MS_TEST = 15 * 60_000  // safety-net sweep every 15m
 // Peer response: after a bot reacts to a game event, each OTHER bot may respond
 export const PEER_DELAY_MS_PROD: [number, number] = [30 * 60_000, 90 * 60_000] // 30–90min
 export const PEER_DELAY_MS_TEST: [number, number] = [45_000, 135_000] // 45–135s in test mode (was 30–90s)
-export const PEER_SILENCE_CHANCE = 0.2 // sometimes an observer just doesn't respond
+export const PEER_SILENCE_CHANCE = 0.2 // sometimes an observer just doesn't respond — but never on a peer's own unvoted choice point (see poster.ts)
+
+// Vote-coverage safety net: if a bot still hasn't voted on the active choice
+// point after this long, guarantee a reaction regardless of what the normal
+// initiator+chain flow did or didn't schedule. Comfortably longer than the
+// worst-case natural delay (initiator pick + peer chain) so it never races
+// or duplicates the intended staggered pacing — only fires on true gaps.
+export const VOTE_GUARANTEE_GRACE_MS_PROD = 6 * 3600_000 // 6h
+export const VOTE_GUARANTEE_GRACE_MS_TEST = 15 * 60_000  // 15min in test mode
 
 // Theory posts (#theories): a step-back take after a chapter concludes
 export const THEORY_AFTER_CLOSE_CHANCE = 0.6

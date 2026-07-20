@@ -2,12 +2,13 @@ import { CHARACTERS, inIdleWindow } from './characters.js'
 import { getCharacterState, claimPendingPost, allPendingPosts, schedulePendingPost, type CharacterState } from './state.js'
 import { executePost } from './poster.js'
 import { claimPendingArtifacts } from './artifacts.js'
-import { getTestMode, getBotClaimSignal, getBotPace } from './story.js'
+import { getTestMode, getBotClaimSignal, getBotPace, loadGameContext } from './story.js'
 import {
   CLAIM_INTERVAL_MS_PROD, CLAIM_INTERVAL_MS_TEST, POLL_INTERVAL_MS,
   IDLE_CHANCE_PER_TICK_PROD, IDLE_CHANCE_PER_TICK_TEST,
   IDLE_MIN_GAP_MS_PROD, IDLE_MIN_GAP_MS_TEST,
   IDLE_TANGENT_CHANCE, IDLE_THEORY_CHANCE, THEORIES_CHANNEL_ID,
+  VOTE_GUARANTEE_GRACE_MS_PROD, VOTE_GUARANTEE_GRACE_MS_TEST,
 } from './config.js'
 
 let lastClaimCheck = 0
@@ -76,13 +77,49 @@ async function maybeScheduleIdlePost(
 }
 
 /**
+ * Vote-coverage safety net. The normal path to a vote is the initiator pick
+ * (site-side, on episode open/reset) plus the peer chain (bots-side, on that
+ * initiator's post) — and poster.ts now guarantees a peer's slot in that
+ * chain when they haven't voted yet. But that chain can still fail to reach
+ * someone entirely: two chain events landing on the same bot as initiator
+ * back-to-back, a process restart at the wrong moment, anything. This is the
+ * backstop — if a bot has nothing at all scheduled and hasn't voted on the
+ * active choice point well past any plausible natural delay, force it.
+ */
+async function maybeGuaranteeVote(
+  character: (typeof CHARACTERS)[number],
+  state: CharacterState,
+  activeVoteTag: string | null,
+  votingOpenedAt: string | undefined,
+  testMode: boolean,
+  pace: number,
+): Promise<void> {
+  if (!activeVoteTag || state.last_voted === activeVoteTag) return
+  if (Object.keys(state.pending_posts ?? {}).length > 0) return // something's already coming
+
+  const grace = (testMode ? VOTE_GUARANTEE_GRACE_MS_TEST : VOTE_GUARANTEE_GRACE_MS_PROD) * pace
+  if (votingOpenedAt && Date.now() - new Date(votingOpenedAt).getTime() < grace) return
+
+  await schedulePendingPost(character.name, {
+    scheduled_for: new Date(Date.now() + 60_000).toISOString(),
+    trigger: 'episode_open',
+    game_which: 'active',
+    channel: 'story',
+  })
+  console.log(`[scheduler] ${character.name}: guaranteed a vote reaction on ${activeVoteTag} — safety net, nothing was scheduled`)
+}
+
+/**
  * Durable scheduler: pending posts live in DynamoDB (written by the Next.js
  * admin routes and by the observer response chain), so schedules survive
  * process restarts. Each tick claims due posts atomically before executing.
  */
 async function tick(): Promise<void> {
   await maybeClaimArtifacts()
-  const [testMode, pace] = await Promise.all([getTestMode(), getBotPace()])
+  const [testMode, pace, activeGame] = await Promise.all([getTestMode(), getBotPace(), loadGameContext('active')])
+  const activeVoteTag = activeGame && activeGame.record.status === 'open'
+    ? `${activeGame.choicePoint}:rv${activeGame.resetVersion}`
+    : null
 
   for (const character of CHARACTERS) {
     const { name } = character
@@ -90,6 +127,7 @@ async function tick(): Promise<void> {
       const state = await getCharacterState(name)
 
       await maybeScheduleIdlePost(character, state, testMode, pace)
+      await maybeGuaranteeVote(character, state, activeVoteTag, activeGame?.record.voting_opens_at, testMode, pace)
 
       // Due posts execute oldest-first so e.g. the vote_close commentary
       // lands before the next episode_open reaction.

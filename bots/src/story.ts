@@ -21,6 +21,7 @@ export interface ChapterRecord {
   epilogue_key?: string
   choice_outcomes?: Record<string, string>
   winning_choice?: string
+  voting_opens_at?: string
   voting_closes_at?: string
 }
 
