@@ -15,7 +15,7 @@ export async function POST() {
     })),
     dynamo.send(new ScanCommand({
       TableName: 'eigenthrope_chapters',
-      ProjectionExpression: 'choice_point',
+      ProjectionExpression: 'choice_point, voting_opens_at, voting_closes_at',
     })),
     dynamo.send(new ScanCommand({
       TableName: 'eigenthrope_universes',
@@ -35,8 +35,15 @@ export async function POST() {
     })),
   ])
 
-  const allChapters = (chapters.Items ?? []) as { choice_point: string }[]
+  const allChapters = (chapters.Items ?? []) as {
+    choice_point: string
+    voting_opens_at?: string
+    voting_closes_at?: string
+  }[]
   const allUniverses = (universes.Items ?? []) as { universe_id: string }[]
+
+  const DEFAULT_VOTING_HOURS = 24
+  const now = Date.now()
 
   // First chapter alphabetically becomes the new active choice point
   const firstChoicePoint = allChapters
@@ -80,16 +87,33 @@ export async function POST() {
       }))
     ),
 
-    // Reopen all chapters — clear closed state and any prior round's results
-    ...allChapters.map(item =>
-      dynamo.send(new UpdateCommand({
+    // Reopen all chapters — clear closed state and any prior round's results,
+    // and re-anchor the voting window to right now. Without this, a chapter's
+    // original voting_opens_at/voting_closes_at (set whenever it was first
+    // created, possibly weeks ago) would survive the reset untouched — and
+    // since status goes back to 'open', the close-choice-point cron would
+    // see a deadline already in the past and auto-close the freshly-reset
+    // vote before anyone gets to cast one. Each chapter keeps whatever
+    // voting DURATION it was last configured with (closes − opens), just
+    // measured from now instead of its original creation time.
+    ...allChapters.map(item => {
+      const openedAt = item.voting_opens_at ? new Date(item.voting_opens_at).getTime() : NaN
+      const closedAt = item.voting_closes_at ? new Date(item.voting_closes_at).getTime() : NaN
+      const durationMs = Number.isFinite(openedAt) && Number.isFinite(closedAt) && closedAt > openedAt
+        ? closedAt - openedAt
+        : DEFAULT_VOTING_HOURS * 3600_000
+      return dynamo.send(new UpdateCommand({
         TableName: 'eigenthrope_chapters',
         Key: { choice_point: item.choice_point },
-        UpdateExpression: 'SET #s = :open REMOVE winning_choice, final_tally, final_weights',
+        UpdateExpression: 'SET #s = :open, voting_opens_at = :vo, voting_closes_at = :vc REMOVE winning_choice, final_tally, final_weights',
         ExpressionAttributeNames: { '#s': 'status' },
-        ExpressionAttributeValues: { ':open': 'open' },
+        ExpressionAttributeValues: {
+          ':open': 'open',
+          ':vo': new Date(now).toISOString(),
+          ':vc': new Date(now + durationMs).toISOString(),
+        },
       }))
-    ),
+    }),
 
     // Mark all universes active
     ...allUniverses.map(item =>
